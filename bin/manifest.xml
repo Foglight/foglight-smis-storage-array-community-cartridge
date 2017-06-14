@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+  <cartridge foglight-version="5.7.5.1" final="true" type="free">
+    <identity name="SMISStorageAgent" version="1.0.1" buildId="1.0.1-201706060531" creation-date="2017-06-06T05:31:02.249+0800" author="" />
+    <dependency name="PythonAgentData" version="1.0.0" match="LATEST" />
+    <dependency name="Managed-Topology-Service" version="1.0.1" match="LATEST" />
+    <component type="Installers" deployment-item="installers.xml">
+      <identity name="SMISStorageAgent-Installers" version="1.0.1" creation-date="2017-06-06T05:31:02.249+0800" />
+      <file name="installers.xml" size="321" />
+      <file name="SMISStorageAgent.gar" size="431332" />
+    </component>
+    <component type="Monitoring Policy">
+      <identity name="SMISStorageAgent-Properties" version="1.0.1" creation-date="2017-06-06T05:31:02.249+0800" />
+      <file name="monitoring-policy.xml" size="2911" />
+    </component>
+  </cartridge>
+  <cartridge foglight-version="5.7.5.1" final="true" type="free">
+    <identity name="PythonAgentData" version="1.0.0" creation-date="2016-05-30T16:09:30.344Z" author="Dell Python Script Agent" />
+    <component type="Topology Types">
+      <identity name="PythonAgentData-Topology-Types" version="1.0.0" creation-date="2016-05-30T16:09:30.365Z" />
+      <file name="topology.xml" size="7050" />
+    </component>
+  </cartridge>
+</manifest>
