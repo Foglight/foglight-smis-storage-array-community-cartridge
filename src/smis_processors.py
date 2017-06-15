@@ -29,7 +29,7 @@ def processArray(sanNasModel, cim_array):
 
 def processControllers(array, cim_controllers):
     for c in cim_controllers:
-        controller = array.get_controller(c["name"].upper())
+        controller = array.get_controller(c["ElementName"].upper())
         # print(c.tomof())
 
         if c.has_key("IPAddress"):
@@ -46,7 +46,7 @@ def processFcPorts(array, cim_fcPorts):
     for p in cim_fcPorts:
         # Note: Port ID must be globally unique, they are not specific to a single array
         try:
-            print("port: ", p.tomof())
+            # print("port: ", p.tomof())
             wwn = p.get("PermanentAddress")
             if (None == wwn): continue
 
@@ -89,7 +89,7 @@ def processPools(array, cim_pools):
 
 def processVolumes(array, cim_volumes, poolsMap):
     for v in cim_volumes:
-        print(v.tomof())
+        # print(v.tomof())
 
         lun = array.get_lun(v["DeviceID"])
 
@@ -118,7 +118,7 @@ def processVolumes(array, cim_volumes, poolsMap):
 
 def processDisks(array, cim_disks, poolsMap):
     for d in cim_disks:
-        print(d.tomof())
+        # print(d.tomof())
         disk = array.get_physical_disk(d["DeviceID"].upper())
         disk.set_property("name", d["Name"])
 

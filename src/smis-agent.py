@@ -55,6 +55,12 @@ def collect_inventory(conn):
         __namespace = ps_array.path.namespace
         debug("array.namespace: ", __namespace)
 
+        # diskDrives = conn.EnumerateInstances("CIM_DiskDrive", __namespace)
+        # diskDrives = [d for d in diskDrives if d.get("SystemName") == ps_array.get("Name")]
+        # print("diskDrive: ", len(diskDrives))
+        # for dv in diskDrives:
+        #     print("driveView", dv.tomof())
+
         isBlockStorageViewsSupported = getBlockStorageViewsSupported(conn)
         debug("isBlockStorageViewsSupported", isBlockStorageViewsSupported)
 
@@ -80,7 +86,7 @@ def collect_inventory(conn):
         volumes = [y for x in poolVolumeMap.values() for y in x]
         debug("volumes: ", len(volumes))
 
-        poolDiskMap = getPoolDiskMap(conn, pools)
+        poolDiskMap = getPoolDiskMap(conn, pools, disks)
         for k in poolDiskMap.keys():
             poolDiskPaths = poolDiskMap.get(k)
             for disk in disks:
@@ -91,13 +97,20 @@ def collect_inventory(conn):
             debug('%s disks: %d, volumes: %d' % (k, len(poolDiskPaths),
                                                  len(poolVolumes) if poolVolumes else 0))
 
+        # extents = getExtents(conn, ps_array, controllers)
+        # debug("extents: ", len(extents))
+        # if extents:
+        #     for e in extents.values():
+        #         print('extent:', e.tomof())
+
         # getDiskExtents getDiskToVolumeAssociation
         # print("extents: ", len(extents))
 
         # TODO getStorageTiers, memberToTier, volumeToTier, parityGroups
 
         # if controllers:
-        #     print("controllers[0]: ", controllers[0].tomof())
+        #     for c in controllers:
+        #         print("controller: ", c.tomof())
         # if fcPorts:
         #     for p in fcPorts:
         #         print("fcPorts[0]: ", p.tomof())
@@ -140,6 +153,7 @@ def collect_performance(conn):
     _start = timer()
 
     arrays = getArrays(conn)
+    # arrays = arrays[1:2]
     performances = []
     for ps_array in arrays:
         __namespace = ps_array.path.namespace
@@ -263,16 +277,16 @@ def execute_request(server_url, creds, namespace):
 
         # collect_inventory(conn)
         # # print("="*100)
-        collect_performance(conn)
-        #
-        # tracker = foglight.model.CollectionTracker(inventory_frequency.seconds)
-        # if tracker.is_inventory_recommended():
-        #     logger.info("Inventory collection required")
-        #     collect_inventory(conn)
-        #     tracker.record_inventory()
-        # else:
-        #     collect_performance(conn)
-        #     tracker.record_performance()
+        # collect_performance(conn)
+
+        tracker = foglight.model.CollectionTracker(inventory_frequency.seconds)
+        if tracker.is_inventory_recommended():
+            logger.info("Inventory collection required")
+            collect_inventory(conn)
+            tracker.record_inventory()
+        else:
+            collect_performance(conn)
+            tracker.record_performance()
 
     # handle any exception
     except CIMError as err:

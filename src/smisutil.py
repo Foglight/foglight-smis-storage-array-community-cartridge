@@ -215,7 +215,12 @@ def getExtents(conn, ps_array, controllers):
                                 AssocClass="CIM_SystemDevice",
                                 ResultClass="CIM_StorageExtent")
             extents += extentComps
-    return extents
+
+    extentLookup = {}
+    for extent in extents:
+        if extent.has_key("DeviceID"):
+            extentLookup[extent.path] = extent
+    return extentLookup
 
 
 def getPools(conn, ps_array):
@@ -233,7 +238,7 @@ def getPools(conn, ps_array):
     return pools
 
 
-def getDisksFromDriveViews(conn, ps_array, controllers):
+def __getDisksFromDriveViews(conn, ps_array, controllers):
     disks = []
     diskViews = conn.Associators(ps_array.path,
                                 AssocClass="SNIA_SystemDeviceView",
@@ -248,6 +253,7 @@ def getDisksFromDriveViews(conn, ps_array, controllers):
                 diskViews += compViews
 
     for view in diskViews:
+        # print("view", view.tomof())
         # pull the keys specific to the storage volume from the view of the volume
         creationClassName = view.get("DDCreationClassName")
         v = CIMInstance(classname=creationClassName)
@@ -266,7 +272,7 @@ def getDisksFromDriveViews(conn, ps_array, controllers):
     return disks
 
 
-def getDiskDrives(conn, ps_array, controllers):
+def __getDiskDrives(conn, ps_array, controllers):
     disks = conn.Associators(ps_array.path,
                                 AssocClass="CIM_SystemDevice",
                                 ResultClass="CIM_DiskDrive")
@@ -281,10 +287,25 @@ def getDiskDrives(conn, ps_array, controllers):
 
 def getDisks(conn, ps_array, controllers, supportedViews):
     if (supportedViews.__contains__(u"DiskDriveView")):
-        disks = getDisksFromDriveViews(conn, ps_array, controllers)
+        disks = __getDisksFromDriveViews(conn, ps_array, controllers)
     else:
-        disks = getDiskDrives(conn, ps_array, controllers)
+        disks = __getDiskDrives(conn, ps_array, controllers)
+
+    if len(disks)<=0:
+        disks = conn.EnumerateInstances("CIM_DiskDrive", ps_array.path.namespace)
+        disks = [d for d in disks if d.get("SystemName") == ps_array.get("Name")]
+
     return disks
+
+
+def getDiskExtentsMap(conn, disks):
+    diskExtents = {}
+    for d in disks:
+        extents = conn.AssociatorNames(d.path,
+                                AssocClass="CIM_MediaPresent",
+                                ResultClass="CIM_StorageExtent")
+        diskExtents[d.path] = extents
+    return diskExtents
 
 
 def __getVolumesFromVolumeViews(conn, ps_array):
@@ -354,7 +375,9 @@ def getPoolVolumesMap(conn, ps_array, pools, supportedViews):
             volume.__setitem__('PoolID', poolID)
     return poolVolumeMap
 
-def getPoolDiskMap(conn, pools):
+def getPoolDiskMap(conn, pools, disks):
+    diskExtentsMap = getDiskExtentsMap(conn, disks)
+
     poolDiskMap = {}
     for p in pools:
         isPrimordial = p.get("Primordial")
@@ -370,12 +393,20 @@ def getPoolDiskMap(conn, pools):
             poolDiskMap[p.get("InstanceID")] = poolDisks
         # elif p.classname.startswith("HPEVA_"):
         else:
-            poolDiskExtents = conn.AssociatorNames(p.path,
+            poolDiskExtentPaths = conn.AssociatorNames(p.path,
                             AssocClass="CIM_ConcreteComponent",
                             ResultClass="CIM_StorageExtent",
                             Role="GroupComponent",
                             ResultRole="PartComponent")
-            poolDiskMap[p.get("InstanceID")] = poolDiskExtents
+
+            diskPaths = []
+            for extentPath in poolDiskExtentPaths:
+                for diskPath in diskExtentsMap.keys():
+                    if diskExtentsMap.get(diskPath).__contains__(extentPath):
+                        if (not diskPaths.__contains__(diskPath)):
+                            diskPaths.append(diskPath)
+
+            poolDiskMap[p.get("InstanceID")] = diskPaths
     return poolDiskMap
 
 
