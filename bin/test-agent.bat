@@ -27,4 +27,5 @@ cd %START%
 %HARNESS% --properties=%PROPERTIES% ^
           --statedir=%AGENTDIR%\state ^
           --lib %SDKLIBDIR% ^
+          --debug ^
           %AGENTDIR%\src\smis-agent.py

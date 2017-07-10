@@ -99,20 +99,36 @@ def processVolumes(array, cim_volumes, poolsMap):
         pool = poolsMap[v["PoolID"]]
         lun.associate_with(pool)
 
+        isThinProvisioned = False
         if (v.has_key("ThinlyProvisioned")):
-            lun.set_property("isThinProvisioned", bool(v["ThinlyProvisioned"]))
+            isThinProvisioned = bool(v["ThinlyProvisioned"])
+            lun.set_property("isThinProvisioned", isThinProvisioned)
 
-        # Allocated
-        # Capacity
+        blockSize = v["BlockSize"]
+        consumableBlocks = v["ConsumableBlocks"]
+        numberOfBlocks = v["NumberOfBlocks"]
+        logicalBytes = 0
+        if consumableBlocks == 0:
+            logicalBytes = numberOfBlocks * blockSize
+        else:
+            logicalBytes = consumableBlocks * blockSize
+        size = long(logicalBytes / 1024 / 1024)
+        lun.set_property("size", size)
+        lun.set_property("advertisedSize", size)
+        # lun.set_property("rawCapacity", size)
+        # lun.set_property("allocatedSize", size)
+
+        if isThinProvisioned:
+            consumedBytes = 0
+            if v.has_key("ConsumedBytes"):
+                consumedBytes = v["ConsumedBytes"]
+            if consumedBytes > logicalBytes:
+                logger.warn("Thin SALD over-consumed %s : %d > %d" % (v["ElementName"], consumedBytes, logicalBytes))
+            if 0 <= consumedBytes:
+                lun.set_property("advertisedSize", long(consumedBytes / 1024 / 1024))
+
         # RawCapacity
         # setProtection
-        # setIsThinProvisioned
-
-        # I *believe* that the size reported here is the advertised size of the LUN
-        # not the actual size.
-        # lun.set_property("advertisedSize", long(v["size"]) / 1024 / 1024)
-        # pv = ps_array.get_volume(v["name"], space=True)
-        # lun.set_property("protection", ps_array.get_volume(pv["name"], protect=True))
     return None
 
 
@@ -127,14 +143,32 @@ def processDisks(array, cim_disks, poolsMap):
             pool = poolsMap[poolID]
             disk.associate_with(pool)
 
-        # Model
-        # Vendor
-        # Capacity
-        # Role
-        # Rpm
-        # diskInterface
-        # disk.set_property("diskInterface", d["DiskType"])
-        # disk.set_property("size", long(d["capacity"]) / 1024 / 1024)
+        role = "Disk"
+        if d.has_key("IsSpare"):
+            isSpare = d.get("IsSpare")
+            if None != isSpare or bool(isSpare) == True:
+                role = "Spare"
+        disk.set_property("role", role)
+
+        if d.has_key("Rpm"):
+            disk.set_property("rpm", d.get("Rpm"))
+
+        if d.has_key("Model"):
+            disk.set_property("modelNumber", str(d.get("Model")))
+
+        if d.has_key("Vendor"):
+            disk.set_property("vendorName", str(d.get("Vendor")))
+
+        diskInterface = ""
+        if d.has_key("DiskType"):
+            diskInterface = str(d.get("DiskType"))
+        if diskInterface != "" and d.has_key("DeviceType"):
+            diskInterface = str(d.get("DeviceType"))
+        disk.set_property("diskInterface", diskInterface)
+
+        if d.has_key("Capacity"):
+            disk.set_property("size", d.get("Capacity") / 1024 / 1024)
+
     return None
 
 def submit_inventory(sanNasModel, inventory):
@@ -172,9 +206,9 @@ def processControllerStats(array, controllerStats, _tracker):
                 _tracker.request_inventory()
                 continue
 
-            controller.set_metric("bytesReadBlock", long(cStat.get("KBytesRead")))
-            controller.set_metric("bytesWriteBlock", long(cStat.get("KBytesWritten")))
-            controller.set_metric("bytesTotalBlock", long(cStat.get("KbytesTransferred")))
+            controller.set_metric("bytesReadBlock", long(cStat.get("KBytesRead")) * 1024)
+            controller.set_metric("bytesWriteBlock", long(cStat.get("KBytesWritten")) * 1024)
+            controller.set_metric("bytesTotalBlock", long(cStat.get("KbytesTransferred")) * 1024)
             controller.set_metric("opsReadBlock", long(cStat.get("ReadIOs")))
             controller.set_metric("opsWriteBlock", long(cStat.get("WriteIOs")))
             controller.set_metric("opsTotalBlock", long(cStat.get("TotalIOs")))
@@ -204,13 +238,13 @@ def processFcPortStats(array, fcPortStats, _tracker):
             port.set_state(state)
 
             if (None != pStat.get("KBytesRead")):
-                port.set_metric("bytesRead", long(pStat.get("KBytesRead")))
+                port.set_metric("bytesRead", long(pStat.get("KBytesRead")) * 1024)
 
             if (None != pStat.get("KBytesWritten")):
-                port.set_metric("bytesWrite", long(pStat.get("KBytesWritten")))
+                port.set_metric("bytesWrite", long(pStat.get("KBytesWritten")) * 1024)
 
             if (None != pStat.get("KbytesTransferred")):
-                port.set_metric("bytesTotal", long(pStat.get("KbytesTransferred")))
+                port.set_metric("bytesTotal", long(pStat.get("KbytesTransferred")) * 1024)
 
             if (None != pStat.get("ReadIOs")):
                 port.set_metric("opsRead", long(pStat.get("ReadIOs")))
@@ -242,9 +276,9 @@ def processIscsiPortStats(array, iscsiPortStats, _tracker):
             state = str(pStat.get("OperationalStatus").__iter__().next())
             port.set_state(state)
 
-            port.set_metric("bytesRead", long(pStat.get("KBytesRead")))
-            port.set_metric("bytesWrite", long(pStat.get("KBytesWritten")))
-            port.set_metric("bytesTotal", long(pStat.get("KbytesTransferred")))
+            port.set_metric("bytesRead", long(pStat.get("KBytesRead")) * 1024)
+            port.set_metric("bytesWrite", long(pStat.get("KBytesWritten")) * 1024)
+            port.set_metric("bytesTotal", long(pStat.get("KbytesTransferred")) * 1024)
             port.set_metric("opsRead", long(pStat.get("ReadIOs")))
             port.set_metric("opsWrite", long(pStat.get("WriteIOs")))
             port.set_metric("opsTotal", long(pStat.get("TotalIOs")))
@@ -268,12 +302,50 @@ def processVolumeStats(array, volumeStats, _tracker):
             state = str(vStat.get("OperationalStatus").__iter__().next())
             volume.set_state(state)
 
-            volume.set_metric("bytesRead", long(vStat.get("KBytesRead")))
-            volume.set_metric("bytesWrite", long(vStat.get("KBytesWritten")))
-            volume.set_metric("bytesTotal", long(vStat.get("KbytesTransferred")))
-            volume.set_metric("opsRead", long(vStat.get("ReadIOs")))
-            volume.set_metric("opsWrite", long(vStat.get("WriteIOs")))
-            volume.set_metric("opsTotal", long(vStat.get("TotalIOs")))
+            volume.set_metric("bytesRead", long(vStat.get("KBytesRead")) * 1024)
+            volume.set_metric("bytesWrite", long(vStat.get("KBytesWritten")) * 1024)
+            volume.set_metric("bytesTotal", long(vStat.get("KbytesTransferred")) * 1024)
+
+            if vStat.has_key("ReadIOTimeCounter"):
+                volume.set_metric("latencyRead", long(vStat.get("ReadIOTimeCounter")) / 1000)
+
+            if vStat.has_key("WriteIOTimeCounter"):
+                volume.set_metric("latencyWrite", long(vStat.get("WriteIOTimeCounter")) / 1000)
+
+            if vStat.has_key("IOTimeCounter"):
+                volume.set_metric("latencyTotal", long(vStat.get("IOTimeCounter")) / 1000)
+
+            opsRead = long(vStat.get("ReadIOs"))
+            opsWrite = long(vStat.get("WriteIOs"))
+            opsTotal = long(vStat.get("TotalIOs"))
+            volume.set_metric("opsRead", opsRead)
+            volume.set_metric("opsWrite", opsWrite)
+            volume.set_metric("opsTotal", opsTotal)
+
+            readHitIos = long(vStat.get("ReadHitIOs"))
+            writeHitIos = long(vStat.get("WriteHitIOs"))
+            totalHitIos = readHitIos + writeHitIos
+
+            if opsRead != 0:
+                cacheReadHits = 99.0
+                if (readHitIos / opsRead < 1):
+                    cacheReadHits = readHitIos * 100.0 / opsRead
+                volume.set_metric("cacheReadHits", cacheReadHits)
+
+            if opsWrite != 0:
+                cacheWriteHits = 99.0
+                if (writeHitIos / opsWrite < 1):
+                    cacheWriteHits = writeHitIos * 100.0 / opsWrite
+                volume.set_metric("cacheWriteHits", cacheWriteHits)
+
+            if opsTotal != 0:
+                cacheHits = 99.0
+                if (totalHitIos / opsTotal < 1):
+                    cacheHits = totalHitIos * 100.0 / opsTotal
+                volume.set_metric("cacheHits", cacheHits)
+
+
+            # print("-------------------------size: ", size)
         except Exception,e:
             print(traceback.format_exc())
     return None
@@ -294,12 +366,22 @@ def processDiskStats(array, diskStats, _tracker):
             state = str(dStat.get("OperationalStatus").__iter__().next())
             disk.set_state(state)
 
-            disk.set_metric("bytesRead", long(dStat.get("KBytesRead")))
-            disk.set_metric("bytesWrite", long(dStat.get("KBytesWritten")))
-            disk.set_metric("bytesTotal", long(dStat.get("KbytesTransferred")))
+            disk.set_metric("bytesRead", long(dStat.get("KBytesRead")) * 1024)
+            disk.set_metric("bytesWrite", long(dStat.get("KBytesWritten")) * 1024)
+            disk.set_metric("bytesTotal", long(dStat.get("KbytesTransferred")) * 1024)
+
             disk.set_metric("opsRead", long(dStat.get("ReadIOs")))
             disk.set_metric("opsWrite", long(dStat.get("WriteIOs")))
             disk.set_metric("opsTotal", long(dStat.get("TotalIOs")))
+
+            if dStat.has_key("ReadIOTimeCounter"):
+                disk.set_metric("latencyRead", long(dStat.get("ReadIOTimeCounter")) / 1000)
+
+            if dStat.has_key("WriteIOTimeCounter"):
+                disk.set_metric("latencyWrite", long(dStat.get("WriteIOTimeCounter")) / 1000)
+
+            if dStat.has_key("IOTimeCounter"):
+                disk.set_metric("latencyTotal", long(dStat.get("IOTimeCounter")) / 1000)
         except Exception, e:
             print(traceback.format_exc())
     return None

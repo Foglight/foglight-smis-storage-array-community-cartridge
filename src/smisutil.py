@@ -6,6 +6,7 @@ import string
 
 from pywbemReq.cim_obj import CIMInstanceName, CIMInstance
 from pywbemReq.cim_operations import is_subclass
+from pywbemReq.cim_types import *
 
 
 def getRegisteredProfiles(conn):
@@ -295,7 +296,33 @@ def getDisks(conn, ps_array, controllers, supportedViews):
         disks = conn.EnumerateInstances("CIM_DiskDrive", ps_array.path.namespace)
         disks = [d for d in disks if d.get("SystemName") == ps_array.get("Name")]
 
+    for d in disks:
+        getPhysicalPackages(conn, d)
+        getDiskExtents(conn, d)
     return disks
+
+
+def getDiskExtents(conn, disk):
+    diskExtents = conn.Associators(disk.path, AssocClass="CIM_MediaPresent", ResultClass="CIM_StorageExtent")
+    if len(diskExtents) <=0:
+        return
+    extent = diskExtents[0]
+    size = long(extent.get("BlockSize") * extent.get("NumberOfBlocks"))
+    # print('size', size)
+    disk.__setitem__("Capacity", Uint64(size))
+    return None
+
+
+def getPhysicalPackages(conn, disk):
+    packages = conn.Associators(disk.path,  AssocClass="CIM_Realizes", ResultClass="CIM_PhysicalPackage")
+    packages = [p for p in packages if p.has_key("Manufacturer")]
+    if len(packages) <= 0:
+        return
+    package = packages[0]
+    disk.__setitem__("Vendor", package.get("Manufacturer"))
+    disk.__setitem__("Model", package.get("Model"))
+    disk.__setitem__("SerialNumber", package.get("SerialNumber"))
+    return None
 
 
 def getDiskExtentsMap(conn, disks):

@@ -2,6 +2,7 @@
 from __future__ import print_function
 
 import sys
+import thread
 import traceback
 import datetime
 from timeit import default_timer as timer
@@ -28,13 +29,13 @@ def getCollectorInterval():
     frequencies = foglight.asp.get_collector_frequencies()
     scriptPath = [k for k in frequencies.keys() if k.endswith("smis-agent.py")]
     if (scriptPath):
-        collector_seconds = frequencies[scriptPath[0]]
+        collector_seconds = max(300, frequencies[scriptPath[0]])
     return collector_seconds
 
 # Get the collection frequencies
 collector_seconds = getCollectorInterval()
 performance_frequency = datetime.timedelta(seconds=collector_seconds)
-inventory_frequency = datetime.timedelta(minutes=(collector_seconds * 5) / 60)
+inventory_frequency = datetime.timedelta(seconds=collector_seconds * 4)
 
 # A helper class from the foglight.model package that tells us whether an inventory or a
 # performance collection is required.
@@ -140,6 +141,9 @@ def collect_inventory(conn):
         model.submit(inventory_frequency=inventory_frequency,
                      performance_frequency=performance_frequency)
         update = None
+    except Exception:
+        logger.error(traceback.format_exc())
+        print(traceback.format_exc())
     finally:
         if update:
             update.abort()
@@ -148,7 +152,7 @@ def collect_inventory(conn):
     return None
 
 
-def collect_performance(conn):
+def collect_performance(conn, tracker):
     logger.info("Starting performance collection")
     _start = timer()
 
@@ -187,16 +191,20 @@ def collect_performance(conn):
 
         disks = getDisks(conn, ps_array, controllers, supportedViews)
         debug("disks: ", len(disks))
+        if disks:
+            print("disks[0].tomof()", disks[0].tomof())
 
         poolVolumeMap = getPoolVolumesMap(conn, ps_array, pools, supportedViews)
         volumes = [y for x in poolVolumeMap.values() for y in x]
         debug("volumes: ", len(volumes))
+        if volumes:
+            print("volumes[0].tomof()", volumes[0].tomof())
 
         controllerStats = []
         for c in controllers:
             controllerStat = getControllerStatistics(conn, c.path, statAssociations, statObjectMap)
             if len(controllerStat) > 0:
-                controllerStat[0].__setitem__("statID", c["name"].upper())
+                controllerStat[0].__setitem__("statID", c["ElementName"].upper())
                 controllerStat[0].__setitem__("OperationalStatus", c["OperationalStatus"])
                 controllerStats += controllerStat
         debug("controllerStatistics: ", len(controllerStats))
@@ -237,14 +245,14 @@ def collect_performance(conn):
                 diskStats += diskStat
         debug("diskStats: ", len(diskStats))
 
-        # if (len(controllerStats) > 0):
-        #     debug("controllerStatistics: ", controllerStats[0].tomof(), "\n")
-        # if (len(fcPortStats) > 0):
-        #     print("fcPortStatistics: ", fcPortStats[0].tomof(), "\n")
-        # if (len(volumeStats) > 0):
-        #     print("volumeStatistics: ", volumeStats[0].tomof(), "\n")
-        # if len(diskStats) > 0:
-        #     print("diskStatistics: %s" % (diskStats[0].tomof()), "\n")
+        if (len(controllerStats) > 0):
+            debug("controllerStatistics: ", controllerStats[0].tomof(), "\n")
+        if (len(fcPortStats) > 0):
+            print("fcPortStatistics: ", fcPortStats[0].tomof(), "\n")
+        if (len(volumeStats) > 0):
+            print("volumeStatistics: ", volumeStats[0].tomof(), "\n")
+        if len(diskStats) > 0:
+            print("diskStatistics: %s" % (diskStats[0].tomof()), "\n")
 
         performances.append({'ps_array': ps_array,
             'controllerStats': controllerStats, 'fcPortStats': fcPortStats, 'iscsiPortStats': iscsiPortStats,
@@ -255,7 +263,7 @@ def collect_performance(conn):
         model = fsm.storage.SanNasModel(data_update=update)
 
         for performance in performances:
-            submit_performance(model, performance, _tracker=tracker)
+            submit_performance(model, performance, tracker)
 
         model.submit(inventory_frequency=inventory_frequency,
                  performance_frequency=performance_frequency)
@@ -272,21 +280,23 @@ def execute_request(server_url, creds, namespace):
 
     try:
         # Create a connection
-        conn = WBEMConnection(server_url, creds, default_namespace=namespace, timeout=300)
+        conn = WBEMConnection(server_url, creds, default_namespace=namespace, verify=False, timeout=600)
         debug("conn:", conn)
 
         # collect_inventory(conn)
-        # # print("="*100)
+        # print("="*100)
         # collect_performance(conn)
 
-        tracker = foglight.model.CollectionTracker(inventory_frequency.seconds)
+        tracker = foglight.model.CollectionTracker(inventory_frequency.seconds / 60)
         if tracker.is_inventory_recommended():
             logger.info("Inventory collection required")
+            # thread.start_new_thread(collect_inventory, (conn, ))
             collect_inventory(conn)
             tracker.record_inventory()
-        else:
-            collect_performance(conn)
-            tracker.record_performance()
+
+        # thread.start_new_thread(collect_performance, (conn, tracker, ))
+        collect_performance(conn, tracker)
+        tracker.record_performance()
 
     # handle any exception
     except CIMError as err:
@@ -300,6 +310,9 @@ def execute_request(server_url, creds, namespace):
         sys.exit(1)
     except Exception:
         print(traceback.format_exc())
+    finally:
+        if conn:
+            conn = None
 
 
 def getServerUrl(host, port):
