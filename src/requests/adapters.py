@@ -10,6 +10,7 @@ and maintain connections.
 
 import os.path
 import socket
+import traceback
 
 from urllib3.poolmanager import PoolManager, proxy_from_url
 from urllib3.response import HTTPResponse
@@ -511,6 +512,7 @@ class HTTPAdapter(BaseAdapter):
 
         except (_SSLError, _HTTPError) as e:
             if isinstance(e, _SSLError):
+                print(traceback.format_exc())
                 raise SSLError(e, request=request)
             elif isinstance(e, ReadTimeoutError):
                 raise ReadTimeout(e, request=request)

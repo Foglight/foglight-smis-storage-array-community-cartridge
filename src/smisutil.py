@@ -3,6 +3,7 @@ from __future__ import print_function
 
 
 import string
+import traceback
 
 from pywbemReq.cim_obj import CIMInstanceName, CIMInstance
 from pywbemReq.cim_operations import is_subclass
@@ -44,6 +45,7 @@ def getArrays(conn):
     managedElements = getElementsForProfile(conn, "Array")
 
     arrays = []
+    _operationalStatusValues = None
     for m in managedElements:
         if not is_subclass(conn, m.path.namespace, "CIM_ComputerSystem", m.classname):
             continue
@@ -53,6 +55,11 @@ def getArrays(conn):
 
         if not getProductInfo(conn, m):
             continue
+
+        if _operationalStatusValues == None:
+            _operationalStatusValues = getOperationalStatusValues(conn, m, m.classname)
+        status = convertOperationalStatusValues(['OperationalStatus'], _operationalStatusValues)
+        m.__setitem__("OperationalStatus", status)
 
         arrays.append(m)
     return arrays
@@ -118,6 +125,27 @@ def getSupportedViews(conn, ps_array, isBlockStorageViewsSupported):
     return supportedViews
 
 
+def getOperationalStatusValues(conn, ps_array, className):
+    cls = conn.GetClass(className,
+                        namespace=ps_array.path.namespace,
+                        LocalOnly=False,
+                        IncludeQualifiers=True,
+                        IncludeClassOrigin=True,
+                        PropertyList=['OperationalStatus'])
+    ops = cls.properties.get("OperationalStatus")
+    return ops.qualifiers['Values'].value
+
+
+def convertOperationalStatusValues(operationalStatus, operationalStatusValues):
+    values = []
+    for status in operationalStatus:
+        if len(operationalStatusValues) > status:
+            values.append(operationalStatusValues[status])
+        else:
+            values.append("OK")
+    return values
+
+
 def getControllers(conn, ps_array):
     controllers = []
     comps = conn.Associators(ps_array.path,
@@ -127,7 +155,9 @@ def getControllers(conn, ps_array):
                                 ResultRole="PartComponent")
 
     arrayClassName = ps_array.classname
+    _operationalStatusValues = None
     for c in comps:
+
         # EMC Clariion and Symmetrix have front-end FC ports on EMC_StorageProcessorSystem Class
         if ((arrayClassName.startswith("Clar") or arrayClassName.startswith("Symm"))
                 and not c.classname.__contains__("StorageProcessorSystem")):
@@ -146,12 +176,22 @@ def getControllers(conn, ps_array):
             versionString = softwareIdentities[0].get("VersionString")
             c.__setitem__("VersionString", versionString)
 
+        if _operationalStatusValues == None:
+            _operationalStatusValues = getOperationalStatusValues(conn, ps_array, c.classname)
+        if c.has_key("OperationalStatus"):
+            status = convertOperationalStatusValues(c['OperationalStatus'], _operationalStatusValues)
+            c.__setitem__("OperationalStatus", status)
+
         controllers.append(c)
+        # print(c.tocimxml().toxml())
     return controllers
 
 
 def getFcPorts(conn, ps_array, controllers):
     fcPorts = []
+    if len(controllers) <= 0:
+        return fcPorts
+
     for ct in controllers:
         try:
             ports = conn.Associators(ct.path, AssocClass="CIM_SystemDevice",
@@ -163,21 +203,25 @@ def getFcPorts(conn, ps_array, controllers):
                 print("No FC ports found for %s using %s" % (ct.get("ElementName"),  conn) )
                 controllers.remove(ct)
             else:
+                for p in ports:
+                    p.__setitem__("ControllerName", ct.get("ElementName"))
                 fcPorts += ports
         except Exception as err:
             print("getFcPorts Error: ", err)
 
-    if (len(fcPorts) <= 0):
+    if len(fcPorts) <= 0 and len(controllers) > 0:
         fcPorts = conn.Associators(ps_array.path,
                                     AssocClass="CIM_SystemDevice",
                                     ResultClass="CIM_FCPort")
+        for p in fcPorts:
+            p.__setitem__("ControllerName", controllers[0].get("ElementName"))
 
+    ports = []
+    _operationalStatusValues = None
     for p in fcPorts:
-        usageRestriction = p.get("UsageRestriction")
-
         # don't include back-end ports
+        usageRestriction = p.get("UsageRestriction")
         if (3 == usageRestriction):
-            fcPorts.remove(p)
             continue
 
         if (p.classname.startswith("HPEVA")):
@@ -185,17 +229,31 @@ def getFcPorts(conn, ps_array, controllers):
             p.path.__delitem__("DeviceID")
             p.path.__setitem__("Name", p.get("Name"))
 
-    return fcPorts
+        if _operationalStatusValues == None:
+            _operationalStatusValues = getOperationalStatusValues(conn, ps_array, p.classname)
+        if p.has_key("OperationalStatus"):
+            status = convertOperationalStatusValues(p['OperationalStatus'], _operationalStatusValues)
+            p.__setitem__("OperationalStatus", status)
+
+        ports.append(p)
+
+    return ports
 
 
 def getIscisiPorts(conn, ps_array, controllers):
     iscisiPorts = []
+    if len(controllers) <= 0:
+        return iscisiPorts
+
     try:
         for ct in controllers:
             ports = conn.Associators(ct.path,
                                     AssocClass="CIM_HostedAccessPoint",
                                     ResultClass="CIM_iSCSIProtocolEndpoint")
-            if (ports): iscisiPorts += ports
+            if (ports):
+                for p in ports:
+                    p.__setitem__("ControllerName", ct.get("ElementName"))
+                iscisiPorts += ports
     except Exception as err:
         print("getIscisiPorts Error: ", err)
 
@@ -203,6 +261,18 @@ def getIscisiPorts(conn, ps_array, controllers):
         iscisiPorts = conn.Associators(ps_array.path,
                                     AssocClass="CIM_SystemDevice",
                                     ResultClass="CIM_FCPort")
+
+        for p in iscisiPorts:
+            p.__setitem__("ControllerName", controllers[0].get("ElementName"))
+
+    _operationalStatusValues = None
+    for p in iscisiPorts:
+        if _operationalStatusValues == None:
+            _operationalStatusValues = getOperationalStatusValues(conn, ps_array, p.classname)
+        if p.has_key("OperationalStatus"):
+            status = convertOperationalStatusValues(p['OperationalStatus'], _operationalStatusValues)
+            p.__setitem__("OperationalStatus", status)
+
     return iscisiPorts
 
 
@@ -229,12 +299,20 @@ def getPools(conn, ps_array):
                                 AssocClass="CIM_HostedStoragePool",
                                 ResultClass="CIM_StoragePool")
 
+    _operationalStatusValues = None
     pools = []
     for p in spools:
         if p.get("InstanceID") == None:
             continue
         if p.get("Primordial") != False:
             continue
+
+        if _operationalStatusValues == None:
+            _operationalStatusValues = getOperationalStatusValues(conn, ps_array, p.classname)
+        if p.has_key("OperationalStatus"):
+            status = convertOperationalStatusValues(p['OperationalStatus'], _operationalStatusValues)
+            p.__setitem__("OperationalStatus", status)
+
         pools.append(p)
     return pools
 
@@ -274,15 +352,19 @@ def __getDisksFromDriveViews(conn, ps_array, controllers):
 
 
 def __getDiskDrives(conn, ps_array, controllers):
-    disks = conn.Associators(ps_array.path,
-                                AssocClass="CIM_SystemDevice",
-                                ResultClass="CIM_DiskDrive")
-    if (len(disks) == 0):
-        for ct in controllers:
-            diskComps = conn.Associators(ct.path,
-                                AssocClass="CIM_SystemDevice",
-                                ResultClass="CIM_DiskDrive")
-            disks += diskComps
+    disks = []
+    try:
+        disks = conn.Associators(ps_array.path,
+                                    AssocClass="CIM_SystemDevice",
+                                    ResultClass="CIM_DiskDrive")
+        if (len(disks) == 0):
+            for ct in controllers:
+                diskComps = conn.Associators(ct.path,
+                                    AssocClass="CIM_SystemDevice",
+                                    ResultClass="CIM_DiskDrive")
+                disks += diskComps
+    except:
+        print(traceback.format_exc())
     return disks
 
 
@@ -296,9 +378,17 @@ def getDisks(conn, ps_array, controllers, supportedViews):
         disks = conn.EnumerateInstances("CIM_DiskDrive", ps_array.path.namespace)
         disks = [d for d in disks if d.get("SystemName") == ps_array.get("Name")]
 
+    _operationalStatusValues = None
     for d in disks:
         getPhysicalPackages(conn, d)
         getDiskExtents(conn, d)
+
+        if _operationalStatusValues == None:
+            _operationalStatusValues = getOperationalStatusValues(conn, ps_array, d.classname)
+        if d.has_key("OperationalStatus"):
+            status = convertOperationalStatusValues(d['OperationalStatus'], _operationalStatusValues)
+            d.__setitem__("OperationalStatus", status)
+
     return disks
 
 
@@ -319,9 +409,14 @@ def getPhysicalPackages(conn, disk):
     if len(packages) <= 0:
         return
     package = packages[0]
-    disk.__setitem__("Vendor", package.get("Manufacturer"))
-    disk.__setitem__("Model", package.get("Model"))
-    disk.__setitem__("SerialNumber", package.get("SerialNumber"))
+    if None != package.get("Manufacturer"):
+        disk.__setitem__("Vendor", package.get("Manufacturer"))
+
+    if None != package.get("Model"):
+        disk.__setitem__("Model", package.get("Model"))
+
+    if None != package.get("SerialNumber"):
+        disk.__setitem__("SerialNumber", package.get("SerialNumber"))
     return None
 
 
@@ -396,10 +491,19 @@ def getPoolVolumesMap(conn, ps_array, pools, supportedViews):
     if (len(poolVolumeMap) <= 0):
         poolVolumeMap = __getVolumesFromPools(conn, pools)
 
+    _operationalStatusValues = None
     for poolID in poolVolumeMap.keys():
         volumes = poolVolumeMap.get(poolID)
+
         for volume in volumes:
             volume.__setitem__('PoolID', poolID)
+
+            if _operationalStatusValues == None:
+                _operationalStatusValues = getOperationalStatusValues(conn, ps_array, volume.classname)
+            if volume.has_key("OperationalStatus"):
+                status = convertOperationalStatusValues(volume['OperationalStatus'], _operationalStatusValues)
+                volume.__setitem__("OperationalStatus", status)
+
     return poolVolumeMap
 
 def getPoolDiskMap(conn, pools, disks):
@@ -410,22 +514,26 @@ def getPoolDiskMap(conn, pools, disks):
         isPrimordial = p.get("Primordial")
         if (isPrimordial == None):
             continue
+
+        poolDisks = []
         if hasCIMClasses(conn, p.path.namespace, {"CIM_ConcreteDependency", "CIM_DiskDrive"}):
-        # if (p.classname.startswith("Clar_") or p.classname.startswith("Symm_")):
+
             poolDisks = conn.AssociatorNames(p.path,
                             AssocClass="CIM_ConcreteDependency",
                             ResultClass="CIM_DiskDrive",
                             Role="Dependent",
                             ResultRole="Antecedent")
+            # print("poolDisks: ", len(poolDisks))
             poolDiskMap[p.get("InstanceID")] = poolDisks
-        # elif p.classname.startswith("HPEVA_"):
-        else:
+
+        if len(poolDisks) <= 0:
+
             poolDiskExtentPaths = conn.AssociatorNames(p.path,
                             AssocClass="CIM_ConcreteComponent",
                             ResultClass="CIM_StorageExtent",
                             Role="GroupComponent",
                             ResultRole="PartComponent")
-
+            # print("poolDiskExtentPaths: ", len(poolDiskExtentPaths))
             diskPaths = []
             for extentPath in poolDiskExtentPaths:
                 for diskPath in diskExtentsMap.keys():
@@ -437,55 +545,78 @@ def getPoolDiskMap(conn, pools, disks):
     return poolDiskMap
 
 
-def getControllerStatistics(conn, controller_path, statAssociations, statObjectMap):
-    controllerStat = getAssociatedStatistics(conn, controller_path, statAssociations, statObjectMap)
+def getControllerStatistics(conn, controller, statAssociations, statObjectMap):
+    controllerStat = getAssociatedStatistics(conn, controller.path, statAssociations, statObjectMap)
     # print("controllerStat", controllerStat)
 
     if controllerStat == None or len(controllerStat) <= 0:
         try:
-            controllerStat = getStorageStatisticsData(conn, controller_path)
+            controllerStat = getStorageStatisticsData(conn, controller.path)
         except:
             pass
+
+    if len(controllerStat) > 0:
+        controllerStat[0].__setitem__("statID", controller["ElementName"].upper())
+        controllerStat[0].__setitem__("OperationalStatus", controller["OperationalStatus"])
     return controllerStat
 
 
-def getPortStatistics(conn, port_path, statAssociations, statObjectMap):
-    portStat = getAssociatedStatistics(conn, port_path, statAssociations, statObjectMap)
+def getPortStatistics(conn, port, statAssociations, statObjectMap):
+    portStat = getAssociatedStatistics(conn, port.path, statAssociations, statObjectMap)
 
     if portStat == None or len(portStat) <= 0:
         # print("port.path: ", port.path)
-        portStat = getStorageStatisticsData(conn, port_path)
+        portStat = getStorageStatisticsData(conn, port.path)
+
+    if len(portStat) > 0:
+        portStat[0].__setitem__("statID", port["PermanentAddress"])
+        portStat[0].__setitem__("OperationalStatus", port["OperationalStatus"])
+        portStat[0].__setitem__("Speed", port["Speed"])
+        if port.has_key("MaxSpeed"):
+            portStat[0].__setitem__("MaxSpeed", port["MaxSpeed"])
     return portStat
 
 
-def getDiskStatistics(conn, disk_path, statAssociations, statObjectMap):
+def getDiskStatistics(conn, disk, statAssociations, statObjectMap):
     diskStat = []
     onMedia = False     #TODO if stats for disks are associated with the media on this SMI provider
 
     if (not onMedia):
-        diskStat = getAssociatedStatistics(conn, disk_path, statAssociations, statObjectMap)
+        diskStat = getAssociatedStatistics(conn, disk.path, statAssociations, statObjectMap)
         if diskStat == None or len(diskStat) <= 0:
-            diskStat = getStorageStatisticsData(conn, disk_path)
+            diskStat = getStorageStatisticsData(conn, disk.path)
 
     if diskStat == None or len(diskStat) <= 0:
-        medias = conn.AssociatorNames(disk_path,
+        medias = conn.AssociatorNames(disk.path,
                                       AssocClass="CIM_MediaPresent",
                                       ResultClass="CIM_StorageExtent")
         if (len(medias) > 0):
             diskStat = getAssociatedStatistics(conn, medias[0], statAssociations, statObjectMap)
             if diskStat == None or len(diskStat) <= 0:
                 diskStat = getStorageStatisticsData(conn, medias[0])
+
+    if len(diskStat) > 0:
+        diskStat[0].__setitem__("statID", disk["DeviceID"].upper())
+        diskStat[0].__setitem__("OperationalStatus", disk["OperationalStatus"])
     return diskStat
 
 
-def getVolumeStatistics(conn, volume_path, statAssociations, statObjectMap):
-    volumeStat = getAssociatedStatistics(conn, volume_path, statAssociations, statObjectMap)
+def getVolumeStatistics(conn, volume, statAssociations, statObjectMap):
+    volumeStat = getAssociatedStatistics(conn, volume.path, statAssociations, statObjectMap)
 
     if volumeStat == None or len(volumeStat) <= 0:
-        volumeStat = conn.Associators(volume_path,
+        volumeStat = conn.Associators(volume.path,
                                       AssocClass="CIM_ElementStatisticalData",
                                       ResultClass="CIM_BlockStorageStatisticalData",
                                       IncludeClassOrigin=True)
+
+    if len(volumeStat) > 0:
+        volumeStat[0].__setitem__("statID", volume["DeviceID"])
+        volumeStat[0].__setitem__("OperationalStatus", volume["OperationalStatus"])
+        volumeStat[0].__setitem__("BlockSize", volume["BlockSize"])
+        volumeStat[0].__setitem__("ConsumableBlocks", volume["ConsumableBlocks"])
+        volumeStat[0].__setitem__("NumberOfBlocks", volume["NumberOfBlocks"])
+
     return volumeStat
 
 
@@ -549,51 +680,3 @@ def hasCIMClasses(conn, __namespace, classNames):
     CLASS_NAMES = getClassNames(conn, __namespace, None)
     return classNames.issubset(CLASS_NAMES)
 
-
-
-# def getDiskPathsFromDriveViews(conn, ps_array, controllers):
-#     diskPaths = []
-#     diskViewPaths = conn.AssociatorNames(ps_array.path,
-#                                 AssocClass="SNIA_SystemDeviceView",
-#                                 ResultClass="SNIA_DiskDriveView")
-#     if None == diskViewPaths or len(diskViewPaths) <=0:
-#         diskViewPaths = []
-#         for ct in controllers:
-#             compViews = conn.AssociatorNames(ct.path,
-#                                 AssocClass="SNIA_SystemDeviceView",
-#                                 ResultClass="SNIA_DiskDriveView")
-#             if None != compViews and len(compViews) > 0:
-#                 diskViewPaths += compViews
-#
-#     for viewPath in diskViewPaths:
-#         # pull the keys specific to the storage volume from the view of the volume
-#         creationClassName = viewPath.get("DDCreationClassName")
-#         diskPath = CIMInstanceName(classname=creationClassName, namespace=ps_array.path.namespace)
-#
-#         for k in viewPath.keys():
-#             if k.startswith('DD') and None != viewPath.get(k):
-#                 diskPath.__setitem__(k[2:], viewPath.get(k))
-#
-#         diskPaths.append(diskPath)
-#     return diskPaths
-#
-#
-# def getDiskDrivePaths(conn, ps_array, controllers):
-#     diskPaths = conn.AssociatorsNames(ps_array.path,
-#                                 AssocClass="CIM_SystemDevice",
-#                                 ResultClass="CIM_DiskDrive")
-#     if (len(diskPaths) == 0):
-#         for ct in controllers:
-#             diskComps = conn.AssociatorNames(ct.path,
-#                                 AssocClass="CIM_SystemDevice",
-#                                 ResultClass="CIM_DiskDrive")
-#             diskPaths += diskComps
-#     return diskPaths
-#
-#
-# def getDiskPaths(conn, ps_array, controllers, supportedViews):
-#     if (supportedViews.__contains__(u"DiskDriveView")):
-#         diskPaths = getDiskPathsFromDriveViews(conn, ps_array, controllers)
-#     else:
-#         diskPaths = getDiskDrivePaths(conn, ps_array, controllers)
-#     return diskPaths

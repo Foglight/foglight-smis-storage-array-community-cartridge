@@ -1,13 +1,19 @@
 from __future__ import absolute_import
+
 import errno
 import logging
-import sys
-import warnings
-
-from socket import error as SocketError, timeout as SocketTimeout
 import socket
+import sys
+import traceback
+import warnings
+from socket import error as SocketError, timeout as SocketTimeout
 
-
+from .connection import (
+    port_by_scheme,
+    DummyConnection,
+    HTTPConnection, HTTPSConnection, VerifiedHTTPSConnection,
+    HTTPException, BaseSSLError,
+)
 from .exceptions import (
     ClosedPoolError,
     ProtocolError,
@@ -23,18 +29,11 @@ from .exceptions import (
     InsecureRequestWarning,
     NewConnectionError,
 )
-from .packages.ssl_match_hostname import CertificateError
 from .packages import six
 from .packages.six.moves import queue
-from .connection import (
-    port_by_scheme,
-    DummyConnection,
-    HTTPConnection, HTTPSConnection, VerifiedHTTPSConnection,
-    HTTPException, BaseSSLError,
-)
+from .packages.ssl_match_hostname import CertificateError
 from .request import RequestMethods
 from .response import HTTPResponse
-
 from .util.connection import is_connection_dropped
 from .util.request import set_file_position
 from .util.response import assert_header_parsing
@@ -42,10 +41,9 @@ from .util.retry import Retry
 from .util.timeout import Timeout
 from .util.url import get_host, Url
 
-
 if six.PY2:
     # Queue is imported for side effects on MS Windows
-    import Queue as _unused_module_Queue  # noqa: F401
+    pass
 
 xrange = six.moves.xrange
 
@@ -626,6 +624,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # Close the connection. If a connection is reused on which there
             # was a Certificate error, the next request will certainly raise
             # another Certificate error.
+            print(traceback.format_exc())
             clean_exit = False
             raise SSLError(e)
 

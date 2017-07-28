@@ -5,8 +5,11 @@ import sys
 import thread
 import traceback
 import datetime
+import threading
+
 from timeit import default_timer as timer
 import requests.packages.urllib3
+import urllib3
 from pywbemReq.cim_operations import WBEMConnection,CIMError
 
 import foglight.asp
@@ -35,13 +38,13 @@ def getCollectorInterval():
 # Get the collection frequencies
 collector_seconds = getCollectorInterval()
 performance_frequency = datetime.timedelta(seconds=collector_seconds)
-inventory_frequency = datetime.timedelta(seconds=collector_seconds * 4)
+inventory_frequency = datetime.timedelta(seconds=collector_seconds * 5)
 
 # A helper class from the foglight.model package that tells us whether an inventory or a
 # performance collection is required.
 tracker = None
 
-def collect_inventory(conn):
+def collect_inventory(conn, tracker):
     logger.info("Starting inventory collection")
     _start = timer()
 
@@ -109,22 +112,18 @@ def collect_inventory(conn):
 
         # TODO getStorageTiers, memberToTier, volumeToTier, parityGroups
 
-        # if controllers:
-        #     for c in controllers:
-        #         print("controller: ", c.tomof())
-        # if fcPorts:
-        #     for p in fcPorts:
-        #         print("fcPorts[0]: ", p.tomof())
-        # if iscsiPorts:
-        #     print("iscisiPorts[0]: ", iscsiPorts[0].tomof())
-        # if pools:
-        #     for p in pools:
-        #         print("pools[0]: ", p.tomof())
-        # if disks:
-        #     for d in disks:
-        #         print("disks: ", d.tomof())
-        # if volumes:
-        #     print("volumes[0]: ", volumes[0].tomof())
+        if controllers:
+            print("controller: ", controllers[0].tomof())
+        if fcPorts:
+            print("fcPorts[0]: ", fcPorts[0].tomof())
+        if iscsiPorts:
+            print("iscisiPorts[0]: ", iscsiPorts[0].tomof())
+        if pools:
+            print("pools[0]: ", pools[0].tomof())
+        if disks:
+            print("disks: ", disks[0].tomof())
+        if volumes:
+            print("volumes[0]: ", volumes[0].tomof())
 
         inventories.append({'ps_array': ps_array,
                           'controllers': controllers, 'fcPorts': fcPorts, 'iscsiPorts': iscsiPorts,
@@ -142,11 +141,12 @@ def collect_inventory(conn):
                      performance_frequency=performance_frequency)
         update = None
     except Exception:
-        logger.error(traceback.format_exc())
+        # logger.error(traceback.format_exc())
         print(traceback.format_exc())
     finally:
         if update:
             update.abort()
+        tracker.record_inventory()
 
     logger.info("Inventory collection completed and submitted in %d seconds" % round(timer() - _start))
     return None
@@ -202,46 +202,36 @@ def collect_performance(conn, tracker):
 
         controllerStats = []
         for c in controllers:
-            controllerStat = getControllerStatistics(conn, c.path, statAssociations, statObjectMap)
+            controllerStat = getControllerStatistics(conn, c, statAssociations, statObjectMap)
             if len(controllerStat) > 0:
-                controllerStat[0].__setitem__("statID", c["ElementName"].upper())
-                controllerStat[0].__setitem__("OperationalStatus", c["OperationalStatus"])
                 controllerStats += controllerStat
         debug("controllerStatistics: ", len(controllerStats))
 
         fcPortStats = []
         for p in fcPorts:
-            portStat = getPortStatistics(conn, p.path, statAssociations, statObjectMap)
+            portStat = getPortStatistics(conn, p, statAssociations, statObjectMap)
             if len(portStat) > 0:
-                portStat[0].__setitem__("statID", p.get("PermanentAddress"))
-                portStat[0].__setitem__("OperationalStatus", p["OperationalStatus"])
                 fcPortStats += portStat
         debug("fcPortStats: ", len(fcPortStats))
 
         iscsiPortStats = []
         for p in iscsiPorts:
-            portStat = getPortStatistics(conn, p.path, statAssociations, statObjectMap)
+            portStat = getPortStatistics(conn, p, statAssociations, statObjectMap)
             if len(portStat) > 0:
-                portStat[0].__setitem__("statID", p.get("PermanentAddress"))
-                portStat[0].__setitem__("OperationalStatus", p["OperationalStatus"])
                 iscsiPortStats += portStat
         debug("iscsiPortStats: ", len(iscsiPortStats))
 
         volumeStats = []
         for v in volumes:
-            volumeStat = getVolumeStatistics(conn, v.path, statAssociations, statObjectMap)
+            volumeStat = getVolumeStatistics(conn, v, statAssociations, statObjectMap)
             if len(volumeStat) > 0:
-                volumeStat[0].__setitem__("statID", v["DeviceID"])
-                volumeStat[0].__setitem__("OperationalStatus", v["OperationalStatus"])
                 volumeStats += volumeStat
         debug("volumeStats: ", len(volumeStats))
 
         diskStats = []
         for d in disks:
-            diskStat = getDiskStatistics(conn, d.path, statAssociations, statObjectMap)
+            diskStat = getDiskStatistics(conn, d, statAssociations, statObjectMap)
             if len(diskStat) > 0:
-                diskStat[0].__setitem__("statID", d["DeviceID"].upper())
-                diskStat[0].__setitem__("OperationalStatus", d["OperationalStatus"])
                 diskStats += diskStat
         debug("diskStats: ", len(diskStats))
 
@@ -263,12 +253,17 @@ def collect_performance(conn, tracker):
         model = fsm.storage.SanNasModel(data_update=update)
 
         for performance in performances:
-            submit_performance(model, performance, tracker)
+            submit_performance(model, performance, tracker, update)
+
+        # submission = update.prepare_submission().json
+        # print("submission", submission)
 
         model.submit(inventory_frequency=inventory_frequency,
                  performance_frequency=performance_frequency)
     except Exception:
         print(traceback.format_exc())
+    finally:
+        tracker.record_performance()
 
     logger.info("Performance collection completed and submitted in %d seconds" % round(timer() - _start))
     return None
@@ -279,24 +274,39 @@ def execute_request(server_url, creds, namespace):
         (server_url, namespace))
 
     try:
+        requests.packages.urllib3.disable_warnings()
+        requests.packages.urllib3.disable_warnings(category=urllib3.exceptions.SSLError)
+        urllib3.disable_warnings(category=urllib3.exceptions.SSLError)
+        foglight.utils.disable_ssl_cert_checking()
+
         # Create a connection
-        conn = WBEMConnection(server_url, creds, default_namespace=namespace, verify=False, timeout=600)
+        conn = WBEMConnection(server_url, creds, default_namespace=namespace, verify=False, timeout=1200)
         debug("conn:", conn)
 
         # collect_inventory(conn)
         # print("="*100)
         # collect_performance(conn)
 
+        threads = []
         tracker = foglight.model.CollectionTracker(inventory_frequency.seconds / 60)
         if tracker.is_inventory_recommended():
             logger.info("Inventory collection required")
-            # thread.start_new_thread(collect_inventory, (conn, ))
-            collect_inventory(conn)
+            # t1 = threading.Thread(target=collect_inventory, args=(conn, tracker))
+            # threads.append(t1)
+            collect_inventory(conn, tracker)
             tracker.record_inventory()
 
-        # thread.start_new_thread(collect_performance, (conn, tracker, ))
-        collect_performance(conn, tracker)
-        tracker.record_performance()
+        if tracker.last_inventory:
+            # t2 = threading.Thread(target=collect_performance, args=(conn, tracker))
+            # threads.append(t2)
+            collect_performance(conn, tracker)
+            tracker.record_performance()
+
+        # for t in threads:
+        #     t.start()
+        #
+        # for t in threads:
+        #     t.join()
 
     # handle any exception
     except CIMError as err:
@@ -307,7 +317,6 @@ def execute_request(server_url, creds, namespace):
         else:
             print ("Operation failed: %s" % err)
             print(traceback.format_exc())
-        sys.exit(1)
     except Exception:
         print(traceback.format_exc())
     finally:
@@ -331,20 +340,14 @@ def debug(*args):
 
 def main():
     """ Get arguments and call the execution function"""
-    requests.packages.urllib3.disable_warnings()
-    foglight.utils.disable_ssl_cert_checking()
 
-    __host = foglight.asp.get_properties().get("host")
-    __port = foglight.asp.get_properties().get("port")
-    __username = foglight.asp.get_properties().get("username")
-    __password = foglight.asp.get_properties().get("password")
-    __server_url = getServerUrl(__host, __port)
-
+    asp = foglight.asp.get_properties()
+    server_url = getServerUrl(asp["host"], asp["port"])
     # create the credentials tuple for WBEMConnection
-    creds = (__username, __password)
+    creds = (asp["username"], asp["password"])
 
     # call the method to execute the request and display results
-    execute_request(__server_url, creds, TEST_NAMESPACE)
+    execute_request(server_url, creds, TEST_NAMESPACE)
 
     return 0
 

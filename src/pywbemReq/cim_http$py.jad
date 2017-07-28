@@ -1,0 +1,725 @@
+// Decompiled by Jad v1.5.8g. Copyright 2001 Pavel Kouznetsov.
+// Jad home page: http://www.kpdus.com/jad.html
+// Decompiler options: packimports(3) 
+// Source File Name:   D:\tmp\SMIS3\pywbemReq\cim_http.py
+
+package pywbemReq;
+
+import org.python.core.*;
+
+public class cim_http$py extends PyFunctionTable
+    implements PyRunnable
+{
+
+    public PyObject f$0(PyFrame pyframe, ThreadState threadstate)
+    {
+        Object aobj[];
+        pyframe.setglobal("__doc__", PyString.fromInterned("\nSend HTTP/HTTPS requests to a WBEM server.\n\nThis module does not know anything about the fact that the data being\ntransferred in the HTTP request and response is CIM-XML.  It is up to the\ncaller to provide CIM-XML formatted input data and interpret the result data\nas CIM-XML.\n"));
+        pyframe.setline(31);
+        PyString.fromInterned("\nSend HTTP/HTTPS requests to a WBEM server.\n\nThis module does not know anything about the fact that the data being\ntransferred in the HTTP request and response is CIM-XML.  It is up to the\ncaller to provide CIM-XML formatted input data and interpret the result data\nas CIM-XML.\n");
+        pyframe.setline(33);
+        Object obj = imp.importOne("base64", pyframe, -1);
+        pyframe.setlocal("base64", ((PyObject) (obj)));
+        obj = null;
+        pyframe.setline(34);
+        obj = imp.importOne("logging", pyframe, -1);
+        pyframe.setlocal("logging", ((PyObject) (obj)));
+        obj = null;
+        pyframe.setline(35);
+        obj = imp.importOne("os", pyframe, -1);
+        pyframe.setlocal("os", ((PyObject) (obj)));
+        obj = null;
+        pyframe.setline(36);
+        aobj = new String[1];
+        aobj[0] = "cim_obj";
+        aobj = imp.importFrom("pywbemReq", ((String []) (aobj)), pyframe, -1);
+        PyObject pyobject = aobj[0];
+        pyframe.setlocal("cim_obj", pyobject);
+        pyobject = null;
+        pyframe.setline(37);
+        aobj = new String[1];
+        aobj[0] = "is_text";
+        aobj = imp.importFrom("pywbemReq.cim_types", ((String []) (aobj)), pyframe, -1);
+        pyobject = aobj[0];
+        pyframe.setlocal("is_text", pyobject);
+        pyobject = null;
+        pyframe.setline(38);
+        aobj = imp.importOne("re", pyframe, -1);
+        pyframe.setlocal("re", ((PyObject) (aobj)));
+        aobj = null;
+        pyframe.setline(39);
+        aobj = imp.importOne("requests", pyframe, -1);
+        pyframe.setlocal("requests", ((PyObject) (aobj)));
+        aobj = null;
+        pyframe.setline(40);
+        aobj = imp.importOne("six", pyframe, -1);
+        pyframe.setlocal("six", ((PyObject) (aobj)));
+        aobj = null;
+        pyframe.setline(42);
+        aobj = pyframe.getname("logging").__getattr__("getLogger").__call__(threadstate, pyframe.getname("__name__"));
+        pyframe.setlocal("log", ((PyObject) (aobj)));
+        aobj = null;
+        pyframe.setline(44);
+        aobj = new PyList(new PyObject[] {
+            PyString.fromInterned("Error"), PyString.fromInterned("ConnectionError"), PyString.fromInterned("AuthError"), PyString.fromInterned("TimeoutError"), PyString.fromInterned("HTTPTimeout"), PyString.fromInterned("wbem_request"), PyString.fromInterned("get_object_header")
+        });
+        pyframe.setlocal("__all__", ((PyObject) (aobj)));
+        aobj = null;
+        pyframe.setline(47);
+        aobj = new PyTuple(new PyObject[] {
+            PyString.fromInterned("/etc/pki/ca-trust/extracted/openssl/ca-bundle.trust.crt"), PyString.fromInterned("/etc/ssl/certs"), PyString.fromInterned("/etc/ssl/certificates")
+        });
+        pyframe.setlocal("ca_cert_folder", ((PyObject) (aobj)));
+        aobj = null;
+        pyframe.setline(53);
+        aobj = Py.EmptyObjects;
+        aobj = new PyFunction(pyframe.f_globals, ((PyObject []) (aobj)), parse_url$1, PyString.fromInterned("Return a tuple of ``(host, port, ssl)`` from the URL specified in the\n    ``url`` parameter.\n\n    The returned ``ssl`` item is a boolean indicating the use of SSL, and is\n    recognized from the URL scheme (http vs. https). If none of these schemes\n    is specified in the URL, the returned value defaults to False\n    (non-SSL/http).\n\n    The returned ``port`` item is the port number, as an integer. If there is\n    no port number specified in the URL, the returned value defaults to 5988\n    for non-SSL/http, and to 5989 for SSL/https.\n\n    The returned ``host`` item is the host portion of the URL, as a string.\n    The host portion may be specified in the URL as a short or long host name,\n    dotted IPv4 address, or bracketed IPv6 address with or without zone index\n    (aka scope ID). An IPv6 address is converted from the RFC6874 URI syntax\n    to the RFC4007 text representation syntax before being returned, by\n    removing the brackets and converting the zone index (if present) from\n    \"-eth0\" to \"%eth0\".\n\n    Examples for valid URLs can be found in the test program\n    `testsuite/test_cim_http.py`.\n\n    :param url: url string\n\n    :returns: host, port, is ssl\n\n    "));
+        pyframe.setlocal("parse_url", ((PyObject) (aobj)));
+        aobj = null;
+        pyframe.setline(137);
+        aobj = Py.EmptyObjects;
+        aobj = new PyFunction(pyframe.f_globals, ((PyObject []) (aobj)), get_default_ca_certs$2, PyString.fromInterned("\n    Try to find out system path with ca certificates. This path is cached and\n    returned. If no path is found out, None is returned.\n    "));
+        pyframe.setlocal("get_default_ca_certs", ((PyObject) (aobj)));
+        aobj = null;
+        pyframe.setline(152);
+        aobj = new PyObject[5];
+        pyframe.getname("None");
+        aobj;
+        JVM INSTR swap ;
+        0;
+        JVM INSTR swap ;
+        JVM INSTR aastore ;
+        pyframe.getname("None");
+        aobj;
+        JVM INSTR swap ;
+        1;
+        JVM INSTR swap ;
+        JVM INSTR aastore ;
+        pyframe.getname("None");
+        aobj;
+        JVM INSTR swap ;
+        2;
+        JVM INSTR swap ;
+        JVM INSTR aastore ;
+        pyframe.getname("False");
+        aobj;
+        JVM INSTR swap ;
+        3;
+        JVM INSTR swap ;
+        JVM INSTR aastore ;
+        pyframe.getname("None");
+        aobj;
+        JVM INSTR swap ;
+        4;
+        JVM INSTR swap ;
+        JVM INSTR aastore ;
+        PyFunction pyfunction = new PyFunction(pyframe.f_globals, ((PyObject []) (aobj)), wbem_request$3, null);
+        pyframe.setlocal("wbem_request", pyfunction);
+        pyfunction = null;
+        pyframe.setline(167);
+        pyfunction = Py.EmptyObjects;
+        pyfunction = new PyFunction(pyframe.f_globals, pyfunction, get_object_header$4, PyString.fromInterned("Return the HTTP header required to make a CIM operation request\n    using the given object.  Return None if the object does not need\n    to have a header.\n    :param obj: object of the operation.\n    "));
+        pyframe.setlocal("get_object_header", pyfunction);
+        pyfunction = null;
+        pyframe.setline(193);
+        pyfunction = Py.EmptyObjects;
+        pyfunction = new PyFunction(pyframe.f_globals, pyfunction, _normalize_data$5, null);
+        pyframe.setlocal("_normalize_data", pyfunction);
+        pyfunction = null;
+        pyframe.setline(203);
+        pyfunction = Py.EmptyObjects;
+        pyfunction = new PyFunction(pyframe.f_globals, pyfunction, _normalize_ca_certs$6, null);
+        pyframe.setlocal("_normalize_ca_certs", pyfunction);
+        pyfunction = null;
+        pyframe.setline(211);
+        pyfunction = Py.EmptyObjects;
+        pyfunction = new PyFunction(pyframe.f_globals, pyfunction, _normalize_header$7, null);
+        pyframe.setlocal("_normalize_header", pyfunction);
+        pyfunction = null;
+        pyframe.f_lasti = -1;
+        return Py.None;
+    }
+
+    public PyObject parse_url$1(PyFrame pyframe, ThreadState threadstate)
+    {
+        Object obj;
+        pyframe.setline(81);
+        PyString.fromInterned("Return a tuple of ``(host, port, ssl)`` from the URL specified in the\n    ``url`` parameter.\n\n    The returned ``ssl`` item is a boolean indicating the use of SSL, and is\n    recognized from the URL scheme (http vs. https). If none of these schemes\n    is specified in the URL, the returned value defaults to False\n    (non-SSL/http).\n\n    The returned ``port`` item is the port number, as an integer. If there is\n    no port number specified in the URL, the returned value defaults to 5988\n    for non-SSL/http, and to 5989 for SSL/https.\n\n    The returned ``host`` item is the host portion of the URL, as a string.\n    The host portion may be specified in the URL as a short or long host name,\n    dotted IPv4 address, or bracketed IPv6 address with or without zone index\n    (aka scope ID). An IPv6 address is converted from the RFC6874 URI syntax\n    to the RFC4007 text representation syntax before being returned, by\n    removing the brackets and converting the zone index (if present) from\n    \"-eth0\" to \"%eth0\".\n\n    Examples for valid URLs can be found in the test program\n    `testsuite/test_cim_http.py`.\n\n    :param url: url string\n\n    :returns: host, port, is ssl\n\n    ");
+        pyframe.setline(82);
+        obj = Py.newInteger(5988);
+        pyframe.setlocal(1, ((PyObject) (obj)));
+        obj = null;
+        pyframe.setline(83);
+        obj = Py.newInteger(5989);
+        pyframe.setlocal(2, ((PyObject) (obj)));
+        obj = null;
+        pyframe.setline(84);
+        obj = pyframe.getglobal("False");
+        pyframe.setlocal(3, ((PyObject) (obj)));
+        obj = null;
+        pyframe.setline(87);
+        obj = pyframe.getglobal("re").__getattr__("match").__call__(threadstate, PyString.fromInterned("^(https?)://(.*)$"), pyframe.getlocal(0), pyframe.getglobal("re").__getattr__("I"));
+        pyframe.setlocal(4, ((PyObject) (obj)));
+        obj = null;
+        pyframe.setline(88);
+        if(!pyframe.getlocal(4).__nonzero__())
+            break MISSING_BLOCK_LABEL_299;
+        pyframe.setline(89);
+        obj = pyframe.getlocal(4).__getattr__("group").__call__(threadstate, Py.newInteger(1)).__getattr__("lower").__call__(threadstate);
+        pyframe.setlocal(5, ((PyObject) (obj)));
+        obj = null;
+        pyframe.setline(90);
+        obj = pyframe.getlocal(4).__getattr__("group").__call__(threadstate, Py.newInteger(2));
+        pyframe.setlocal(6, ((PyObject) (obj)));
+        obj = null;
+        pyframe.setline(91);
+        obj = pyframe.getlocal(5);
+        PyString.fromInterned("https");
+        obj;
+        JVM INSTR swap ;
+        _eq();
+        obj = null;
+        __nonzero__();
+        JVM INSTR ifeq 274;
+           goto _L1 _L2
+_L1:
+        break MISSING_BLOCK_LABEL_249;
+_L2:
+        break MISSING_BLOCK_LABEL_274;
+        pyframe.setline(92);
+        obj = pyframe.getglobal("True");
+        pyframe.setlocal(7, ((PyObject) (obj)));
+        obj = null;
+        break MISSING_BLOCK_LABEL_341;
+        pyframe.setline(94);
+        obj = pyframe.getglobal("False");
+        pyframe.setlocal(7, ((PyObject) (obj)));
+        obj = null;
+        break MISSING_BLOCK_LABEL_341;
+        pyframe.setline(98);
+        obj = pyframe.getlocal(3);
+        pyframe.setlocal(7, ((PyObject) (obj)));
+        obj = null;
+        pyframe.setline(99);
+        obj = pyframe.getlocal(0);
+        pyframe.setlocal(6, ((PyObject) (obj)));
+        obj = null;
+        pyframe.setline(104);
+        obj = pyframe.getlocal(6).__getattr__("find").__call__(threadstate, PyString.fromInterned("/"));
+        pyframe.setlocal(4, ((PyObject) (obj)));
+        obj = null;
+        pyframe.setline(105);
+        obj = pyframe.getlocal(4);
+        Py.newInteger(0);
+        obj;
+        JVM INSTR swap ;
+        _ge();
+        obj = null;
+        __nonzero__();
+        JVM INSTR ifeq 443;
+           goto _L3 _L4
+_L3:
+        break MISSING_BLOCK_LABEL_405;
+_L4:
+        break MISSING_BLOCK_LABEL_443;
+        pyframe.setline(106);
+        obj = pyframe.getlocal(6).__getslice__(Py.newInteger(0), pyframe.getlocal(4), null);
+        pyframe.setlocal(6, ((PyObject) (obj)));
+        obj = null;
+        pyframe.setline(111);
+        obj = pyframe.getglobal("re").__getattr__("search").__call__(threadstate, PyString.fromInterned(":([0-9]+)$"), pyframe.getlocal(6));
+        pyframe.setlocal(4, ((PyObject) (obj)));
+        obj = null;
+        pyframe.setline(112);
+        if(pyframe.getlocal(4).__nonzero__())
+        {
+            pyframe.setline(113);
+            obj = pyframe.getlocal(6).__getslice__(Py.newInteger(0), pyframe.getlocal(4).__getattr__("start").__call__(threadstate, Py.newInteger(0)), null);
+            pyframe.setlocal(8, ((PyObject) (obj)));
+            obj = null;
+            pyframe.setline(114);
+            obj = pyframe.getglobal("int").__call__(threadstate, pyframe.getlocal(4).__getattr__("group").__call__(threadstate, Py.newInteger(1)));
+            pyframe.setlocal(9, ((PyObject) (obj)));
+            obj = null;
+        } else
+        {
+            pyframe.setline(116);
+            obj = pyframe.getlocal(6);
+            pyframe.setlocal(8, ((PyObject) (obj)));
+            obj = null;
+            pyframe.setline(117);
+            pyframe.setline(117);
+            obj = pyframe.getlocal(7).__nonzero__() ? ((Object) (pyframe.getlocal(2))) : ((Object) (pyframe.getlocal(1)));
+            pyframe.setlocal(9, ((PyObject) (obj)));
+            obj = null;
+        }
+        pyframe.setline(126);
+        obj = pyframe.getglobal("re").__getattr__("match").__call__(threadstate, PyString.fromInterned("^\\[?(.+?)(?:-(.+))?\\]?$"), pyframe.getlocal(8));
+        pyframe.setlocal(4, ((PyObject) (obj)));
+        obj = null;
+        pyframe.setline(127);
+        if(!pyframe.getlocal(4).__nonzero__())
+            break MISSING_BLOCK_LABEL_862;
+        pyframe.setline(129);
+        obj = pyframe.getlocal(4).__getattr__("group").__call__(threadstate, Py.newInteger(1));
+        pyframe.setlocal(8, ((PyObject) (obj)));
+        obj = null;
+        pyframe.setline(130);
+        obj = pyframe.getlocal(4).__getattr__("group").__call__(threadstate, Py.newInteger(2));
+        pyframe.getglobal("None");
+        obj;
+        JVM INSTR swap ;
+        _isnot();
+        obj = null;
+        __nonzero__();
+        JVM INSTR ifeq 859;
+           goto _L5 _L6
+_L5:
+        break MISSING_BLOCK_LABEL_803;
+_L6:
+        break MISSING_BLOCK_LABEL_862;
+        pyframe.setline(132);
+        obj = pyframe.getlocal(8);
+        PyString.fromInterned("%")._add(pyframe.getlocal(4).__getattr__("group").__call__(threadstate, Py.newInteger(2)));
+        obj;
+        JVM INSTR swap ;
+        _iadd();
+        obj;
+        pyframe.setlocal(8, ((PyObject) (obj)));
+        pyframe.setline(134);
+        PyTuple pytuple = new PyTuple(new PyObject[] {
+            pyframe.getlocal(8), pyframe.getlocal(9), pyframe.getlocal(7)
+        });
+        pyframe.f_lasti = -1;
+        return pytuple;
+    }
+
+    public PyObject get_default_ca_certs$2(PyFrame pyframe, ThreadState threadstate)
+    {
+label0:
+        {
+            pyframe.setline(141);
+            PyString.fromInterned("\n    Try to find out system path with ca certificates. This path is cached and\n    returned. If no path is found out, None is returned.\n    ");
+            pyframe.setline(142);
+            if(!pyframe.getglobal("hasattr").__call__(threadstate, pyframe.getglobal("get_default_ca_certs"), PyString.fromInterned("path")).__not__().__nonzero__())
+                break label0;
+            pyframe.setline(143);
+            PyObject pyobject = pyframe.getglobal("ca_cert_folder").__iter__();
+            do
+            {
+                pyframe.setline(143);
+                pyobject2 = pyobject.__iternext__();
+                if(pyobject2 != null)
+                {
+                    pyframe.setlocal(0, pyobject2);
+                    pyframe.setline(144);
+                    if(pyframe.getglobal("os").__getattr__("path").__getattr__("exists").__call__(threadstate, pyframe.getlocal(0)).__nonzero__())
+                    {
+                        pyframe.setline(145);
+                        PyObject pyobject3 = pyframe.getlocal(0);
+                        pyframe.getglobal("get_default_ca_certs").__setattr__("path", pyobject3);
+                        pyobject3 = null;
+                        break label0;
+                    }
+                } else
+                {
+                    break;
+                }
+            } while(true);
+            pyframe.setline(148);
+            PyObject pyobject4 = pyframe.getglobal("None");
+            pyframe.getglobal("get_default_ca_certs").__setattr__("path", pyobject4);
+            pyobject4 = null;
+        }
+        pyframe.setline(149);
+        PyObject pyobject1 = pyframe.getglobal("get_default_ca_certs").__getattr__("path");
+        pyframe.f_lasti = -1;
+        return pyobject1;
+    }
+
+    public PyObject wbem_request$3(PyFrame pyframe, ThreadState threadstate)
+    {
+        pyframe.setline(154);
+        PyObject pyobject = pyframe.getglobal("_normalize_data").__call__(threadstate, pyframe.getlocal(1));
+        pyframe.setlocal(1, pyobject);
+        pyobject = null;
+        pyframe.setline(155);
+        pyobject = pyframe.getglobal("_normalize_ca_certs").__call__(threadstate, pyframe.getlocal(5), pyframe.getlocal(4));
+        pyframe.setlocal(4, pyobject);
+        pyobject = null;
+        pyframe.setline(156);
+        pyobject = pyframe.getglobal("_normalize_header").__call__(threadstate, pyframe.getlocal(3), pyframe.getlocal(2));
+        pyframe.setlocal(3, pyobject);
+        pyobject = null;
+        pyframe.setline(158);
+        pyframe.getglobal("requests").__getattr__("post");
+        threadstate;
+        PyObject apyobject[] = new PyObject[6];
+        pyframe.getlocal(0);
+        apyobject;
+        JVM INSTR swap ;
+        0;
+        JVM INSTR swap ;
+        JVM INSTR aastore ;
+        pyframe.getlocal(1);
+        apyobject;
+        JVM INSTR swap ;
+        1;
+        JVM INSTR swap ;
+        JVM INSTR aastore ;
+        pyframe.getlocal(4);
+        apyobject;
+        JVM INSTR swap ;
+        2;
+        JVM INSTR swap ;
+        JVM INSTR aastore ;
+        pyframe.getlocal(5);
+        apyobject;
+        JVM INSTR swap ;
+        3;
+        JVM INSTR swap ;
+        JVM INSTR aastore ;
+        pyframe.getlocal(6);
+        apyobject;
+        JVM INSTR swap ;
+        4;
+        JVM INSTR swap ;
+        JVM INSTR aastore ;
+        pyframe.getlocal(3);
+        apyobject;
+        JVM INSTR swap ;
+        5;
+        JVM INSTR swap ;
+        JVM INSTR aastore ;
+        String as[];
+        as = new String[6];
+        as[0] = "url";
+        as[1] = "data";
+        as[2] = "cert";
+        as[3] = "verify";
+        as[4] = "timeout";
+        as[5] = "headers";
+        apyobject;
+        as;
+        __call__();
+        apyobject = null;
+        PyObject pyobject1;
+        pyobject1;
+        pyframe.setlocal(7, pyobject1);
+        pyobject1 = null;
+        pyframe.setline(160);
+        pyobject1 = pyframe.getlocal(7).__getattr__("status_code");
+        Py.newInteger(200);
+        pyobject1;
+        JVM INSTR swap ;
+        _ne();
+        pyobject1 = null;
+        __nonzero__();
+        JVM INSTR ifeq 327;
+           goto _L1 _L2
+_L1:
+        break MISSING_BLOCK_LABEL_294;
+_L2:
+        break MISSING_BLOCK_LABEL_327;
+        pyframe.setline(161);
+        pyframe.getglobal("log").__getattr__("info").__call__(threadstate, pyframe.getlocal(7));
+        break MISSING_BLOCK_LABEL_357;
+        pyframe.setline(163);
+        pyframe.getglobal("log").__getattr__("debug").__call__(threadstate, pyframe.getlocal(7));
+        pyframe.setline(164);
+        PyObject pyobject2 = pyframe.getlocal(7).__getattr__("text");
+        pyframe.f_lasti = -1;
+        return pyobject2;
+    }
+
+    public PyObject get_object_header$4(PyFrame pyframe, ThreadState threadstate)
+    {
+        PyObject pyobject4;
+        pyframe.setline(172);
+        PyString.fromInterned("Return the HTTP header required to make a CIM operation request\n    using the given object.  Return None if the object does not need\n    to have a header.\n    :param obj: object of the operation.\n    ");
+        pyframe.setline(176);
+        if(pyframe.getglobal("is_text").__call__(threadstate, pyframe.getlocal(0)).__nonzero__())
+        {
+            pyframe.setline(177);
+            PyObject pyobject = PyString.fromInterned("{}").__getattr__("format").__call__(threadstate, pyframe.getlocal(0));
+            pyframe.f_lasti = -1;
+            return pyobject;
+        }
+        pyframe.setline(181);
+        if(pyframe.getglobal("isinstance").__call__(threadstate, pyframe.getlocal(0), pyframe.getglobal("cim_obj").__getattr__("CIMClassName")).__nonzero__())
+        {
+            pyframe.setline(182);
+            PyObject pyobject1 = PyString.fromInterned("{}:{}").__getattr__("format").__call__(threadstate, pyframe.getlocal(0).__getattr__("namespace"), pyframe.getlocal(0).__getattr__("classname"));
+            pyframe.f_lasti = -1;
+            return pyobject1;
+        }
+        pyframe.setline(186);
+        pyobject4 = pyframe.getglobal("isinstance").__call__(threadstate, pyframe.getlocal(0), pyframe.getglobal("cim_obj").__getattr__("CIMInstanceName"));
+        pyobject4;
+        if(!pyobject4.__nonzero__())
+            break MISSING_BLOCK_LABEL_243;
+        JVM INSTR pop ;
+        PyObject pyobject3 = pyframe.getlocal(0).__getattr__("namespace");
+        pyframe.getglobal("None");
+        pyobject3;
+        JVM INSTR swap ;
+        _isnot();
+        pyobject3 = null;
+        __nonzero__();
+        JVM INSTR ifeq 285;
+           goto _L1 _L2
+_L1:
+        break MISSING_BLOCK_LABEL_249;
+_L2:
+        break MISSING_BLOCK_LABEL_285;
+        pyframe.setline(187);
+        PyObject pyobject2 = PyString.fromInterned("{}").__getattr__("format").__call__(threadstate, pyframe.getlocal(0));
+        pyframe.f_lasti = -1;
+        return pyobject2;
+        pyframe.setline(189);
+        throw Py.makeException(pyframe.getglobal("TypeError").__call__(threadstate, PyString.fromInterned("Don't know how to generate HTTP headers for {}").__getattr__("format").__call__(threadstate, pyframe.getlocal(0))));
+    }
+
+    public PyObject _normalize_data$5(PyFrame pyframe, ThreadState threadstate)
+    {
+        PyString pystring;
+        pyframe.setline(194);
+        if(pyframe.getglobal("isinstance").__call__(threadstate, pyframe.getlocal(0), pyframe.getglobal("six").__getattr__("text_type")).__nonzero__())
+        {
+            pyframe.setline(195);
+            PyObject pyobject = pyframe.getlocal(0).__getattr__("encode").__call__(threadstate, PyString.fromInterned("utf-8"));
+            pyframe.setlocal(0, pyobject);
+            pyobject = null;
+        }
+        pyframe.setline(197);
+        pystring = PyString.fromInterned("xml version=\"1.0\"");
+        pyframe.getlocal(0);
+        pystring;
+        JVM INSTR swap ;
+        _notin();
+        pystring = null;
+        __nonzero__();
+        JVM INSTR ifeq 146;
+           goto _L1 _L2
+_L1:
+        break MISSING_BLOCK_LABEL_113;
+_L2:
+        break MISSING_BLOCK_LABEL_146;
+        pyframe.setline(198);
+        PyObject pyobject1 = PyString.fromInterned("<?xml version=\"1.0\" encoding=\"utf-8\" ?>\n")._add(pyframe.getlocal(0));
+        pyframe.setlocal(0, pyobject1);
+        pyobject1 = null;
+        pyframe.setline(200);
+        PyObject pyobject2 = pyframe.getlocal(0);
+        pyframe.f_lasti = -1;
+        return pyobject2;
+    }
+
+    public PyObject _normalize_ca_certs$6(PyFrame pyframe, ThreadState threadstate)
+    {
+        PyObject pyobject4;
+        pyframe.setline(204);
+        pyobject4 = pyframe.getlocal(0);
+        pyobject4;
+        if(!pyobject4.__nonzero__())
+            break MISSING_BLOCK_LABEL_39;
+        JVM INSTR pop ;
+        PyObject pyobject = pyframe.getlocal(1);
+        pyframe.getglobal("None");
+        pyobject;
+        JVM INSTR swap ;
+        _is();
+        pyobject = null;
+        __nonzero__();
+        JVM INSTR ifeq 74;
+           goto _L1 _L2
+_L1:
+        break MISSING_BLOCK_LABEL_45;
+_L2:
+        break MISSING_BLOCK_LABEL_74;
+        pyframe.setline(205);
+        PyObject pyobject1 = pyframe.getglobal("get_default_ca_certs").__call__(threadstate);
+        pyframe.setlocal(1, pyobject1);
+        pyobject1 = null;
+        break MISSING_BLOCK_LABEL_120;
+        pyframe.setline(206);
+        if(pyframe.getlocal(0).__not__().__nonzero__())
+        {
+            pyframe.setline(207);
+            PyObject pyobject2 = pyframe.getglobal("None");
+            pyframe.setlocal(1, pyobject2);
+            pyobject2 = null;
+        }
+        pyframe.setline(208);
+        PyObject pyobject3 = pyframe.getlocal(1);
+        pyframe.f_lasti = -1;
+        return pyobject3;
+    }
+
+    public PyObject _normalize_header$7(PyFrame pyframe, ThreadState threadstate)
+    {
+        Object obj;
+        pyframe.setline(212);
+        obj = PyString.fromInterned("application/xml; charset=\"utf-8\"");
+        pyframe.getlocal(0).__setitem__(PyString.fromInterned("Content-type"), ((PyObject) (obj)));
+        obj = null;
+        pyframe.setline(213);
+        obj = pyframe.getlocal(1);
+        pyframe.getglobal("None");
+        obj;
+        JVM INSTR swap ;
+        _isnot();
+        obj = null;
+        __nonzero__();
+        JVM INSTR ifeq 270;
+           goto _L1 _L2
+_L1:
+        break MISSING_BLOCK_LABEL_63;
+_L2:
+        break MISSING_BLOCK_LABEL_270;
+        try
+        {
+            pyframe.setline(215);
+            pyframe.getglobal("base64").__getattr__("encodebytes");
+        }
+        // Misplaced declaration of an exception variable
+        catch(Throwable throwable)
+        {
+            Throwable throwable;
+            PyException pyexception = Py.setException(throwable, pyframe);
+            if(pyexception.match(pyframe.getglobal("AttributeError")))
+            {
+                pyframe.setline(217);
+                PyObject pyobject2 = pyframe.getglobal("base64").__getattr__("encodestring");
+                pyframe.getglobal("base64").__setattr__("encodebytes", pyobject2);
+                pyobject2 = null;
+            } else
+            {
+                throw pyexception;
+            }
+        }
+        pyframe.setline(218);
+        PyObject pyobject = PyString.fromInterned("Basic {}").__getattr__("format").__call__(threadstate, pyframe.getglobal("base64").__getattr__("encodebytes").__call__(threadstate, PyString.fromInterned("{}:{}").__getattr__("format").__call__(threadstate, pyframe.getlocal(1).__getitem__(Py.newInteger(0)), pyframe.getlocal(1).__getitem__(Py.newInteger(1)))).__getattr__("replace").__call__(threadstate, PyString.fromInterned("\n"), PyString.fromInterned("")));
+        pyframe.getlocal(0).__setitem__(PyString.fromInterned("Authorization"), pyobject);
+        pyobject = null;
+        pyframe.setline(220);
+        PyObject pyobject1 = pyframe.getlocal(0);
+        pyframe.f_lasti = -1;
+        return pyobject1;
+    }
+
+    public PyCode getMain()
+    {
+        return f$0;
+    }
+
+    public static void main(String args[])
+    {
+        Py.runMain(CodeLoader.createSimpleBootstrap((new cim_http$py("pywbemReq/cim_http$py")).getMain()), args);
+    }
+
+    public static CodeBootstrap getCodeBootstrap()
+    {
+        return PyRunnableBootstrap.getFilenameConstructorReflectionBootstrap(pywbemReq/cim_http$py);
+    }
+
+    public PyObject call_function(int i, PyFrame pyframe, ThreadState threadstate)
+    {
+        this;
+        pyframe;
+        threadstate;
+        i;
+        JVM INSTR tableswitch 0 7: default 84
+    //                   0 52
+    //                   1 56
+    //                   2 60
+    //                   3 64
+    //                   4 68
+    //                   5 72
+    //                   6 76
+    //                   7 80;
+           goto _L1 _L2 _L3 _L4 _L5 _L6 _L7 _L8 _L9
+_L2:
+        f$0();
+        return;
+_L3:
+        parse_url$1();
+        return;
+_L4:
+        get_default_ca_certs$2();
+        return;
+_L5:
+        wbem_request$3();
+        return;
+_L6:
+        get_object_header$4();
+        return;
+_L7:
+        _normalize_data$5();
+        return;
+_L8:
+        _normalize_ca_certs$6();
+        return;
+_L9:
+        _normalize_header$7();
+        return;
+_L1:
+        return null;
+    }
+
+    static cim_http$py self;
+    static final PyCode f$0;
+    static final PyCode parse_url$1;
+    static final PyCode get_default_ca_certs$2;
+    static final PyCode wbem_request$3;
+    static final PyCode get_object_header$4;
+    static final PyCode _normalize_data$5;
+    static final PyCode _normalize_ca_certs$6;
+    static final PyCode _normalize_header$7;
+
+    public cim_http$py(String s)
+    {
+        self = this;
+        String as[];
+        f$0 = Py.newCode(0, as = new String[0], s, "<module>", 0, false, false, self, 0, null, null, 0, 4096);
+        as = new String[10];
+        as[0] = "url";
+        as[1] = "default_port_http";
+        as[2] = "default_port_https";
+        as[3] = "default_ssl";
+        as[4] = "m";
+        as[5] = "_scheme";
+        as[6] = "host_port";
+        as[7] = "ssl";
+        as[8] = "host";
+        as[9] = "port";
+        parse_url$1 = Py.newCode(1, as, s, "parse_url", 53, false, false, self, 1, null, null, 0, 4097);
+        as = new String[1];
+        as[0] = "path";
+        get_default_ca_certs$2 = Py.newCode(0, as, s, "get_default_ca_certs", 137, false, false, self, 2, null, null, 0, 4097);
+        as = new String[8];
+        as[0] = "url";
+        as[1] = "data";
+        as[2] = "creds";
+        as[3] = "headers";
+        as[4] = "ca_certs";
+        as[5] = "verify";
+        as[6] = "timeout";
+        as[7] = "response";
+        wbem_request$3 = Py.newCode(7, as, s, "wbem_request", 152, false, false, self, 3, null, null, 0, 4097);
+        as = new String[1];
+        as[0] = "obj";
+        get_object_header$4 = Py.newCode(1, as, s, "get_object_header", 167, false, false, self, 4, null, null, 0, 4097);
+        as = new String[1];
+        as[0] = "data";
+        _normalize_data$5 = Py.newCode(1, as, s, "_normalize_data", 193, false, false, self, 5, null, null, 0, 4097);
+        as = new String[2];
+        as[0] = "verify";
+        as[1] = "ca_certs";
+        _normalize_ca_certs$6 = Py.newCode(2, as, s, "_normalize_ca_certs", 203, false, false, self, 6, null, null, 0, 4097);
+        as = new String[2];
+        as[0] = "header";
+        as[1] = "creds";
+        _normalize_header$7 = Py.newCode(2, as, s, "_normalize_header", 211, false, false, self, 7, null, null, 0, 4097);
+    }
+}

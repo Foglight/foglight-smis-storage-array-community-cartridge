@@ -1,7 +1,7 @@
 [
     {
         "scriptPath"   : "smis-agent.py",
-        "interval"     : 100,
+        "interval"     : 10,
         "intervalUnit" : "MINUTES"
     }
 ]

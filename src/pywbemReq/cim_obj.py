@@ -2038,8 +2038,8 @@ class CIMQualifier(object):
         # Don't let anyone set integer or float values.  You must use
         # a subclass from the cim_type module.
 
-        if is_number(value):
-            raise TypeError('Must use a CIM type for numeric qualifiers.')
+        # if is_number(value):
+        #     raise TypeError('Must use a CIM type for numeric qualifiers.')
 
         self.value = value
 

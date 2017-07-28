@@ -3,6 +3,9 @@ from __future__ import print_function
 
 import traceback
 import datetime
+import pickle
+
+import foglight
 import foglight.asp
 import foglight.logging
 import foglight.model
@@ -29,7 +32,11 @@ def processArray(sanNasModel, cim_array):
 
 def processControllers(array, cim_controllers):
     for c in cim_controllers:
-        controller = array.get_controller(c["ElementName"].upper())
+        controllerName = c["Name"]
+        if c.has_key("ElementName"):
+            controllerName = c["ElementName"]
+
+        controller = array.get_controller(controllerName.upper())
         # print(c.tomof())
 
         if c.has_key("IPAddress"):
@@ -54,7 +61,7 @@ def processFcPorts(array, cim_fcPorts):
             port.set_property("name", wwn.lower())
             port.set_property("alias", p.get("ElementName"))
 
-            controllerName = p.get("SystemName")
+            controllerName = p.get("ControllerName")
             controller = array.get_controller(controllerName.upper())
             port.associate_with(controller)
         except Exception,e:
@@ -70,7 +77,7 @@ def processIscsiPorts(array, cim_iscsiPorts):
         port = array.get_port("ISCSI", wwn)
         port.set_property("name", p["ElementName"])
 
-        controllerName = p["SystemName"]
+        controllerName = p["ControllerName"]
         controller = array.get_controller(controllerName.upper())
         port.associate_with(controller)
     return None
@@ -93,7 +100,7 @@ def processVolumes(array, cim_volumes, poolsMap):
 
         lun = array.get_lun(v["DeviceID"])
 
-        lun.set_label("Volume")   # so the UI knows to call these "Volumes"
+        lun.set_label("Lun")   # so the UI knows to call these "Volumes"
         lun.set_property("name", v["ElementName"])
 
         pool = poolsMap[v["PoolID"]]
@@ -136,7 +143,13 @@ def processDisks(array, cim_disks, poolsMap):
     for d in cim_disks:
         # print(d.tomof())
         disk = array.get_physical_disk(d["DeviceID"].upper())
-        disk.set_property("name", d["Name"])
+
+        diskName = None
+        if d.has_key("ElementName"):
+            diskName = d["ElementName"]
+        if None == diskName:
+            diskName = d["Name"]
+        disk.set_property("name", diskName)
 
         if d.has_key("PoolID"):
             poolID = d["PoolID"]
@@ -151,7 +164,7 @@ def processDisks(array, cim_disks, poolsMap):
         disk.set_property("role", role)
 
         if d.has_key("Rpm"):
-            disk.set_property("rpm", d.get("Rpm"))
+            disk.set_property("rpm", str(d.get("Rpm")))
 
         if d.has_key("Model"):
             disk.set_property("modelNumber", str(d.get("Model")))
@@ -194,10 +207,17 @@ def submit_inventory(sanNasModel, inventory):
 #-----------------------------------------------------------------------------------------------------------------------
 
 
-def processControllerStats(array, controllerStats, _tracker):
+def processControllerStats(array, controllerStats, lastStats, _tracker):
+    lastStatMap = {s['statID'] : s for s in lastStats}
+
     for cStat in controllerStats:
         try:
             statID = cStat.get('statID')
+            if not lastStatMap.has_key(statID):
+                continue
+            lastStat = lastStatMap[statID]
+            durationInt = __getDuration(cStat, lastStat)
+
             controller = array.get_controller(statID)
 
             if not controller:
@@ -206,13 +226,23 @@ def processControllerStats(array, controllerStats, _tracker):
                 _tracker.request_inventory()
                 continue
 
-            controller.set_metric("bytesReadBlock", long(cStat.get("KBytesRead")) * 1024)
-            controller.set_metric("bytesWriteBlock", long(cStat.get("KBytesWritten")) * 1024)
-            controller.set_metric("bytesTotalBlock", long(cStat.get("KbytesTransferred")) * 1024)
-            controller.set_metric("opsReadBlock", long(cStat.get("ReadIOs")))
-            controller.set_metric("opsWriteBlock", long(cStat.get("WriteIOs")))
-            controller.set_metric("opsTotalBlock", long(cStat.get("TotalIOs")))
-            state = str(cStat.get("OperationalStatus").__iter__().next())
+            controller.set_metric("bytesReadBlock",
+                                  __getStatValue('KBytesRead', cStat, lastStat, durationInt, 1024))
+            controller.set_metric("bytesWriteBlock",
+                                  __getStatValue('KBytesWritten', cStat, lastStat, durationInt, 1024))
+            controller.set_metric("bytesTotalBlock",
+                                  __getStatValue('KbytesTransferred', cStat, lastStat, durationInt, 1024))
+
+            opsTotal = __getStatValue('TotalIOs', cStat, lastStat, 1)
+            controller.set_metric("opsReadBlock", __getStatValue('ReadIOs', cStat, lastStat, durationInt))
+            controller.set_metric("opsWriteBlock", __getStatValue('WriteIOs', cStat, lastStat, durationInt))
+            controller.set_metric("opsTotalBlock", opsTotal / durationInt)
+
+            ioTimeCounter = __getStatValue('IOTimeCounter', cStat, lastStat, 1)
+            if ioTimeCounter > 0 and opsTotal > 0:
+                controller.set_metric("latencyTotalBlock", ioTimeCounter / opsTotal)
+
+            state = str(convertCIMOperationalStatus(cStat.get("OperationalStatus")))
             controller.set_state(state)
 
             # busyTicks = long(cStat.get("IOTimeCounter"))
@@ -221,10 +251,17 @@ def processControllerStats(array, controllerStats, _tracker):
     return None
 
 
-def processFcPortStats(array, fcPortStats, _tracker):
+def processFcPortStats(array, fcPortStats, lastStats, _tracker, update):
+    lastStatMap = {s['statID']: s for s in lastStats}
+
     for pStat in fcPortStats:
         try:
             statID = pStat.get('statID')
+            if not lastStatMap.has_key(statID):
+                continue
+            lastStat = lastStatMap[statID]
+            durationInt = __getDuration(pStat, lastStat)
+
             port = array.get_port("FC", statID)
 
             if not port:
@@ -233,37 +270,51 @@ def processFcPortStats(array, fcPortStats, _tracker):
                 _tracker.request_inventory()
                 continue
 
-            port.set_metric("currentSpeedMb", 0)
-            state = str(pStat.get("OperationalStatus").__iter__().next())
+            currentSpeed = pStat.get("Speed") / 1024 / 1024
+            maxSpeed = pStat.get("MaxSpeed") / 1024 / 1024
+
+            port.set_metric("currentSpeedMb", currentSpeed)
+            port.set_metric("maxSpeedMb", maxSpeed)
+
+            state = str(convertCIMOperationalStatus(pStat.get("OperationalStatus")))
             port.set_state(state)
 
-            if (None != pStat.get("KBytesRead")):
-                port.set_metric("bytesRead", long(pStat.get("KBytesRead")) * 1024)
+            bytesRead = __getStatValue('KBytesRead', pStat, lastStat, durationInt, 1024)
+            bytesWrite = __getStatValue('KBytesWritten', pStat, lastStat, durationInt, 1024)
+            bytesTotal = __getStatValue('KbytesTransferred', pStat, lastStat, durationInt, 1024)
 
-            if (None != pStat.get("KBytesWritten")):
-                port.set_metric("bytesWrite", long(pStat.get("KBytesWritten")) * 1024)
+            port.set_metric("bytesRead", bytesRead)
+            port.set_metric("bytesWrite", bytesWrite)
+            port.set_metric("bytesTotal", bytesTotal)
 
-            if (None != pStat.get("KbytesTransferred")):
-                port.set_metric("bytesTotal", long(pStat.get("KbytesTransferred")) * 1024)
+            port.set_metric("bytesReadUtilization",
+                            computeUtilization(bytesRead, currentSpeed, durationInt))
+            port.set_metric("bytesWriteUtilization",
+                            computeUtilization(bytesWrite, currentSpeed, durationInt))
 
-            if (None != pStat.get("ReadIOs")):
-                port.set_metric("opsRead", long(pStat.get("ReadIOs")))
-
-            if (None != pStat.get("WriteIOs")):
-                port.set_metric("opsWrite", long(pStat.get("WriteIOs")))
-
-            if (None != pStat.get("TotalIOs")):
-                port.set_metric("opsTotal", long(pStat.get("TotalIOs")))
+            port.set_metric("opsRead",
+                            __getStatValue('ReadIOs', pStat, lastStat, durationInt))
+            port.set_metric("opsWrite",
+                            __getStatValue('WriteIOs', pStat, lastStat, durationInt))
+            port.set_metric("opsTotal",
+                            __getStatValue('TotalIOs', pStat, lastStat, durationInt))
 
         except Exception,e:
             print(traceback.format_exc())
     return None
 
 
-def processIscsiPortStats(array, iscsiPortStats, _tracker):
+def processIscsiPortStats(array, iscsiPortStats, lastStats, _tracker):
+    lastStatMap = {s['statID']: s for s in lastStats}
+
     for pStat in iscsiPortStats:
         try:
             statID = pStat.get('statID')
+            if not lastStatMap.has_key(statID):
+                continue
+            lastStat = lastStatMap[statID]
+            durationInt = __getDuration(pStat, lastStat)
+
             port = array.get_port("ISCSI", statID)
 
             if not port:
@@ -272,25 +323,51 @@ def processIscsiPortStats(array, iscsiPortStats, _tracker):
                 _tracker.request_inventory()
                 continue
 
-            port.set_metric("currentSpeedMb", 0)
-            state = str(pStat.get("OperationalStatus").__iter__().next())
+            currentSpeed = pStat.get("Speed") / 1024 / 1024
+            maxSpeed = pStat.get("MaxSpeed") / 1024 / 1024
+
+            port.set_metric("currentSpeedMb", currentSpeed)
+            port.set_metric("maxSpeedMb", maxSpeed)
+
+            state = str(convertCIMOperationalStatus(pStat.get("OperationalStatus")))
             port.set_state(state)
 
-            port.set_metric("bytesRead", long(pStat.get("KBytesRead")) * 1024)
-            port.set_metric("bytesWrite", long(pStat.get("KBytesWritten")) * 1024)
-            port.set_metric("bytesTotal", long(pStat.get("KbytesTransferred")) * 1024)
-            port.set_metric("opsRead", long(pStat.get("ReadIOs")))
-            port.set_metric("opsWrite", long(pStat.get("WriteIOs")))
-            port.set_metric("opsTotal", long(pStat.get("TotalIOs")))
+            bytesRead = __getStatValue('KBytesRead', pStat, lastStat, durationInt, 1024)
+            bytesWrite = __getStatValue('KBytesWritten', pStat, lastStat, durationInt, 1024)
+            bytesTotal = __getStatValue('KbytesTransferred', pStat, lastStat, durationInt, 1024)
+
+            port.set_metric("bytesRead", bytesRead)
+            port.set_metric("bytesWrite", bytesWrite)
+            port.set_metric("bytesTotal", bytesTotal)
+
+            port.set_metric("bytesReadUtilization",
+                            computeUtilization(bytesRead, currentSpeed, durationInt))
+            port.set_metric("bytesWriteUtilization",
+                            computeUtilization(bytesWrite, currentSpeed, durationInt))
+
+            port.set_metric("opsRead",
+                            __getStatValue('ReadIOs', pStat, lastStat, durationInt))
+            port.set_metric("opsWrite",
+                            __getStatValue('WriteIOs', pStat, lastStat, durationInt))
+            port.set_metric("opsTotal",
+                            __getStatValue('TotalIOs', pStat, lastStat, durationInt))
+
         except Exception,e:
             print(traceback.format_exc())
     return None
 
 
-def processVolumeStats(array, volumeStats, _tracker):
+def processVolumeStats(array, volumeStats, lastStats, _tracker):
+    lastStatMap = {s['statID']: s for s in lastStats}
+
     for vStat in volumeStats:
         try:
             statID = vStat.get('statID')
+            if not lastStatMap.has_key(statID):
+                continue
+            lastStat = lastStatMap[statID]
+            durationInt = __getDuration(vStat, lastStat)
+
             volume = array.get_lun(statID)
 
             if not volume:
@@ -299,51 +376,79 @@ def processVolumeStats(array, volumeStats, _tracker):
                 _tracker.request_inventory()
                 continue
 
-            state = str(vStat.get("OperationalStatus").__iter__().next())
+            state = str(convertCIMOperationalStatus(vStat.get("OperationalStatus")))
             volume.set_state(state)
 
-            volume.set_metric("bytesRead", long(vStat.get("KBytesRead")) * 1024)
-            volume.set_metric("bytesWrite", long(vStat.get("KBytesWritten")) * 1024)
-            volume.set_metric("bytesTotal", long(vStat.get("KbytesTransferred")) * 1024)
+            volume.set_metric("bytesRead",
+                              __getStatValue('KBytesRead', vStat, lastStat, durationInt, 1024))
+            volume.set_metric("bytesWrite",
+                              __getStatValue('KBytesWritten', vStat, lastStat, durationInt, 1024))
+            volume.set_metric("bytesTotal",
+                              __getStatValue('KbytesTransferred', vStat, lastStat, durationInt, 1024))
 
-            if vStat.has_key("ReadIOTimeCounter"):
-                volume.set_metric("latencyRead", long(vStat.get("ReadIOTimeCounter")) / 1000)
 
-            if vStat.has_key("WriteIOTimeCounter"):
-                volume.set_metric("latencyWrite", long(vStat.get("WriteIOTimeCounter")) / 1000)
-
-            if vStat.has_key("IOTimeCounter"):
-                volume.set_metric("latencyTotal", long(vStat.get("IOTimeCounter")) / 1000)
-
-            opsRead = long(vStat.get("ReadIOs"))
-            opsWrite = long(vStat.get("WriteIOs"))
-            opsTotal = long(vStat.get("TotalIOs"))
-            volume.set_metric("opsRead", opsRead)
-            volume.set_metric("opsWrite", opsWrite)
-            volume.set_metric("opsTotal", opsTotal)
-
-            readHitIos = long(vStat.get("ReadHitIOs"))
-            writeHitIos = long(vStat.get("WriteHitIOs"))
+            opsRead = __getStatValue('ReadIOs', vStat, lastStat, 1)
+            opsWrite = __getStatValue('WriteIOs', vStat, lastStat, 1)
+            opsTotal = __getStatValue('TotalIOs', vStat, lastStat, 1)
+            readHitIos = __getStatValue('ReadHitIOs', vStat, lastStat, 1)
+            writeHitIos = __getStatValue('KBytesRead', vStat, lastStat, 1)
             totalHitIos = readHitIos + writeHitIos
 
-            if opsRead != 0:
+            readIOTimeCounter = __getStatValue('ReadIOTimeCounter', vStat, lastStat, 1)
+            writeIOTimeCounter = __getStatValue('WriteIOTimeCounter', vStat, lastStat, 1)
+            ioTimeCounter = __getStatValue('IOTimeCounter', vStat, lastStat, 1)
+            idleTimeCounter = __getStatValue('IdleTimeCounter', vStat, lastStat, 1)
+            if 0 == idleTimeCounter and durationInt > ioTimeCounter:
+                idleTimeCounter = durationInt - ioTimeCounter
+
+            volume.set_metric("opsRead", opsRead / durationInt)
+            volume.set_metric("opsWrite", opsWrite / durationInt)
+            volume.set_metric("opsTotal", opsTotal / durationInt)
+
+            busyPercent = getBusyPercent(ioTimeCounter, idleTimeCounter)
+
+            if None != busyPercent:
+                volume.set_metric("busy", busyPercent)
+
+            if readIOTimeCounter > 0 and opsRead > 0:
+                volume.set_metric("latencyRead", readIOTimeCounter * 1000 / opsRead)
+            if writeIOTimeCounter > 0 and opsWrite > 0:
+                volume.set_metric("latencyWrite", writeIOTimeCounter * 1000 / opsWrite)
+            if ioTimeCounter > 0 and opsTotal > 0:
+                volume.set_metric("latencyTotal", ioTimeCounter * 1000 / opsTotal)
+
+
+
+            if opsRead > 0:
                 cacheReadHits = 99.0
                 if (readHitIos / opsRead < 1):
                     cacheReadHits = readHitIos * 100.0 / opsRead
                 volume.set_metric("cacheReadHits", cacheReadHits)
 
-            if opsWrite != 0:
+            if opsWrite > 0:
                 cacheWriteHits = 99.0
                 if (writeHitIos / opsWrite < 1):
                     cacheWriteHits = writeHitIos * 100.0 / opsWrite
                 volume.set_metric("cacheWriteHits", cacheWriteHits)
 
-            if opsTotal != 0:
+            if opsTotal > 0:
                 cacheHits = 99.0
                 if (totalHitIos / opsTotal < 1):
                     cacheHits = totalHitIos * 100.0 / opsTotal
                 volume.set_metric("cacheHits", cacheHits)
 
+
+            blockSize = __getLongValueFrom("BlockSize", vStat)
+            consumableBlocks = __getLongValueFrom("ConsumableBlocks", vStat)
+            numberOfBlocks = __getLongValueFrom("NumberOfBlocks", vStat)
+            logicalBytes = 0
+            if consumableBlocks == 0:
+                logicalBytes = numberOfBlocks * blockSize
+            else:
+                logicalBytes = consumableBlocks * blockSize
+            size = long(logicalBytes / 1024 / 1024)
+            volume.set_metric("totalSize", size)
+            volume.set_metric("allocatedSize", size)
 
             # print("-------------------------size: ", size)
         except Exception,e:
@@ -351,10 +456,18 @@ def processVolumeStats(array, volumeStats, _tracker):
     return None
 
 
-def processDiskStats(array, diskStats, _tracker):
+def processDiskStats(array, diskStats, lastStats, _tracker):
+
+    lastStatMap = {s['statID']: s for s in lastStats}
+
     for dStat in diskStats:
         try:
             statID = dStat.get('statID')
+            if not lastStatMap.has_key(statID):
+                continue
+            lastStat = lastStatMap[statID]
+            durationInt = __getDuration(dStat, lastStat)
+
             disk = array.get_physical_disk(statID)
 
             if not disk:
@@ -363,46 +476,229 @@ def processDiskStats(array, diskStats, _tracker):
                 _tracker.request_inventory()
                 continue
 
-            state = str(dStat.get("OperationalStatus").__iter__().next())
+            state = str(convertCIMOperationalStatus(dStat.get("OperationalStatus")))
             disk.set_state(state)
 
-            disk.set_metric("bytesRead", long(dStat.get("KBytesRead")) * 1024)
-            disk.set_metric("bytesWrite", long(dStat.get("KBytesWritten")) * 1024)
-            disk.set_metric("bytesTotal", long(dStat.get("KbytesTransferred")) * 1024)
+            disk.set_metric("bytesRead",
+                            __getStatValue('KBytesRead', dStat, lastStat, durationInt, 1024))
+            disk.set_metric("bytesWrite",
+                            __getStatValue('KBytesWritten', dStat, lastStat, durationInt, 1024))
+            disk.set_metric("bytesTotal",
+                            __getStatValue('KbytesTransferred', dStat, lastStat, durationInt, 1024))
 
-            disk.set_metric("opsRead", long(dStat.get("ReadIOs")))
-            disk.set_metric("opsWrite", long(dStat.get("WriteIOs")))
-            disk.set_metric("opsTotal", long(dStat.get("TotalIOs")))
 
-            if dStat.has_key("ReadIOTimeCounter"):
-                disk.set_metric("latencyRead", long(dStat.get("ReadIOTimeCounter")) / 1000)
+            opsRead = __getStatValue('ReadIOs', dStat, lastStat, 1)
+            opsWrite = __getStatValue('WriteIOs', dStat, lastStat, 1)
+            opsTotal = __getStatValue('TotalIOs', dStat, lastStat, 1)
+            readIOTimeCounter = __getStatValue('ReadIOTimeCounter', dStat, lastStat, 1)
+            writeIOTimeCounter = __getStatValue('WriteIOTimeCounter', dStat, lastStat, 1)
+            ioTimeCounter = __getStatValue('IOTimeCounter', dStat, lastStat, 1)
+            idleTimeCounter = __getStatValue('IdleTimeCounter', dStat, lastStat, 1)
+            if 0 == idleTimeCounter and durationInt > ioTimeCounter:
+                idleTimeCounter = durationInt - ioTimeCounter
 
-            if dStat.has_key("WriteIOTimeCounter"):
-                disk.set_metric("latencyWrite", long(dStat.get("WriteIOTimeCounter")) / 1000)
+            disk.set_metric("opsRead", opsRead / durationInt)
+            disk.set_metric("opsWrite", opsWrite / durationInt)
+            disk.set_metric("opsTotal", opsTotal / durationInt)
 
-            if dStat.has_key("IOTimeCounter"):
-                disk.set_metric("latencyTotal", long(dStat.get("IOTimeCounter")) / 1000)
+            busyPercent = getBusyPercent(ioTimeCounter, idleTimeCounter)
+            if None != busyPercent:
+                disk.set_metric("busy", busyPercent)
+
+            if readIOTimeCounter > 0 and opsRead > 0:
+                disk.set_metric("latencyRead", readIOTimeCounter * 1000 / opsRead )
+
+            if writeIOTimeCounter > 0 and opsWrite > 0:
+                disk.set_metric("latencyWrite", writeIOTimeCounter * 1000/ opsWrite )
+
+            if ioTimeCounter > 0 and opsTotal > 0:
+                disk.set_metric("latencyTotal", ioTimeCounter * 1000/ opsTotal )
+
         except Exception, e:
             print(traceback.format_exc())
     return None
 
 
-def submit_performance(model, performance, _tracker):
+def submit_performance(model, performance, _tracker, update):
     ps_array = performance['ps_array']
-    controllerStats = performance['controllerStats']
-    fcPortStats = performance['fcPortStats']
-    iscsiPortStats = performance['iscsiPortStats']
-    volumeStats = performance['volumeStats']
-    diskStats = performance['diskStats']
 
-    print("getArray", ps_array.get("SerialID"), ps_array.get("Vendor"))
-    array = model.get_storage_array(
-        ps_array.get("SerialID"), ps_array.get("Vendor"))
+    last_stats_path = "{0}/raw_stats_{1}.txt".format(foglight.get_agent_specific_directory(), ps_array["SerialID"])
+    last_stats = pickle_load(last_stats_path)
 
-    processControllerStats(array, controllerStats, _tracker)
-    processFcPortStats(array, fcPortStats, _tracker)
-    processIscsiPortStats(array, iscsiPortStats, _tracker)
-    processVolumeStats(array, volumeStats, _tracker)
-    processDiskStats(array, diskStats, _tracker)
+    if last_stats:
+        controllerStats = performance['controllerStats']
+        fcPortStats = performance['fcPortStats']
+        iscsiPortStats = performance['iscsiPortStats']
+        volumeStats = performance['volumeStats']
+        diskStats = performance['diskStats']
 
+        print("getArray", ps_array.get("SerialID"), ps_array.get("Vendor"))
+        array = model.get_storage_array(
+            ps_array.get("SerialID"), ps_array.get("Vendor"))
+
+        processControllerStats(array, controllerStats, last_stats['controllerStats'], _tracker)
+        processFcPortStats(array, fcPortStats,         last_stats['fcPortStats'],     _tracker, update)
+        processIscsiPortStats(array, iscsiPortStats,   last_stats['iscsiPortStats'],  _tracker)
+        processVolumeStats(array, volumeStats,         last_stats['volumeStats'],     _tracker)
+        processDiskStats(array, diskStats,             last_stats['diskStats'],       _tracker)
+
+
+    f = open(last_stats_path, 'wb')
+    pickle.dump(performance, f)
+    f.close()
+    # print("controllerStats", controllerStats)
     return None
+
+
+def pickle_load(filename):
+    f = None
+    try:
+        f = open(filename, 'rb')
+        return pickle.load(f)
+    except(IOError,EOFError):
+        return None
+    finally:
+        if f:
+            f.close()
+
+
+class PerfStates(object):
+    Normal = 0
+    Failed = 1  # also Offline (just not offline on switch port)
+    Removed = 2
+    New = 3
+    Degraded = 4
+    Rebuild = 5
+    # struct modified for LUN, volume modified for Filer Volume.
+    Modified = 6
+    # Path Modified for VM hLD
+    PathModified = 7
+    Suspended = 8
+    Maintenance = 9
+    # vm instance moved @Deprecated
+    vMotion = 10
+    SwitchPortOffline = 11
+    # 12, 13 are used by UI for different purpose
+    ReadOnly = 14
+    """
+     We expected to receive information about this item, but did not. This may
+     indicate removal/failure or it may just be a data collection failure. We
+     just don't know.
+    """
+    NoInformation = 15
+
+def convertCIMOperationalStatus(opStats):
+    if None == opStats or 0 >= len(opStats):
+        return PerfStates.Normal
+
+    state = PerfStates.Normal
+
+    for opStat in opStats:
+        if None != opStat:
+            if opStat in ("In Service"):
+                if PerfStates.Normal == state:
+                    state = PerfStates.Rebuild # disk rebuild states: "OK, In Service"
+                else:
+                    state = PerfStates.Degraded
+                break
+            elif opStat in ("Degraded", "Stressed", "Dormant", "Predictive Failure", "Rebooting",
+                            "Write Disabled", "Write Protected", "Not Ready", "Power Saving Mode"):
+                state = PerfStates.Degraded
+                break
+            elif opStat in ("Unknown", "Other", "Starting", "Completed", "Power Mode", "Online", "Success"):
+                state = PerfStates.Normal
+                break
+            elif opStat in ("Removed"):
+                state = PerfStates.Removed
+                break
+            elif opStat in ("Stopping", "Stopped"):
+                state = PerfStates.Suspended
+                break
+            elif opStat in ("Supporting Entity in Error", "Non-Recoverable Error", "No Contact",
+                            "Lost Communication", "Aborted", "Offline", "Failure"):
+                state = PerfStates.Failed
+                break
+                """
+                When there are multiple statuses, these won't cause the analysis
+                to stop, e.g. disk status "OK, In Service"
+                """
+            elif opStat in ("OK", "DMTF Reserved", "Vendor Reserved"):
+                state = PerfStates.Normal
+            elif opStat in ("Error"):
+                state = PerfStates.Failed
+            else:
+                state = PerfStates.Normal
+
+    return state
+
+
+def getBusyPercent(busyTicks, idleTicks):
+    if None == busyTicks or None == idleTicks:
+        return None
+
+    totalTicks = busyTicks + idleTicks
+    if totalTicks == 0:
+        return None
+
+    return busyTicks * 100 / totalTicks
+
+
+def computeUtilization(bytesTransferred, speedBytesPerSecond, seconds):
+    if bytesTransferred == None or speedBytesPerSecond == None or seconds == None:
+        return None
+
+    if seconds == 0 or speedBytesPerSecond == 0:
+        return None
+
+    # Bandwidth is the total number of bytes we could have transferred during this time period.
+    total_bandwidth = speedBytesPerSecond * seconds
+
+    # Utilization is how many we transferred divided by how many we could have.
+    utilization = bytesTransferred * seconds / total_bandwidth * 100
+
+    return utilization
+
+
+def __getLongValueFrom(metricName, cimobj):
+    v = 0
+    if cimobj.has_key(metricName) and None != cimobj.get(metricName):
+        v = long(cimobj.get(metricName) or 0)
+    return v
+
+
+
+def __getStatValue(metricName, stat, lastStat, duration, multiplier=1):
+    v = 0
+
+    if stat.has_key(metricName) and lastStat.has_key(metricName):
+        currVal = stat[metricName]
+        lastVal = lastStat[metricName]
+
+        if currVal != None and lastVal != None:
+            v = (currVal - lastVal) * multiplier / duration
+            # print(metricName, v)
+    return v
+
+
+def __getDuration(stat, lastStat):
+    durationInt = 1
+    if None != stat and lastStat != None:
+        st1 = stat.get("StatisticTime")
+        st0 = lastStat.get("StatisticTime")
+
+        if st1.is_interval:
+            d1 = st1.timedelta
+            d0 = st0.timedelta
+        else:
+            d1 = st1.datetime
+            d0 = st0.datetime
+
+
+        if None != d1 and None != d0:
+            durationInt = (d1 - d0).seconds
+        else:
+            durationInt = 300
+    #TODO collection interval
+
+    # print('durationInt: ', durationInt)
+    return durationInt
