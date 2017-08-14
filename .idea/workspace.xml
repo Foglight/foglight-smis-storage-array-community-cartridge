@@ -1,14 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="57031d5b-1335-4ba1-83b7-beab461b924d" name="Default" comment="">
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/config/asp-ams1.json" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/config/asp-clariion.json" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/config/asp-eva1.json" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/smis-agent.py" afterPath="$PROJECT_DIR$/src/smis-agent.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/smisutil.py" afterPath="$PROJECT_DIR$/src/smisutil.py" />
-    </list>
+    <list default="true" id="57031d5b-1335-4ba1-83b7-beab461b924d" name="Default" comment="" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -197,8 +190,8 @@
     </option>
   </component>
   <component name="ProjectFrameBounds">
-    <option name="x" value="-2426" />
-    <option name="y" value="572" />
+    <option name="x" value="-2116" />
+    <option name="y" value="533" />
     <option name="width" value="1936" />
     <option name="height" value="1056" />
   </component>
@@ -488,7 +481,7 @@
     </todo-panel>
   </component>
   <component name="ToolWindowManager">
-    <frame x="-2426" y="572" width="1936" height="1056" extended-state="0" />
+    <frame x="-2116" y="533" width="1936" height="1056" extended-state="1" />
     <editor active="true" />
     <layout>
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.24907847" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
