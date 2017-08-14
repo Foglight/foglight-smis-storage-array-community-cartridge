@@ -288,25 +288,34 @@ def execute_request(server_url, creds, namespace):
         # collect_performance(conn)
 
         threads = []
-        tracker = foglight.model.CollectionTracker(inventory_frequency.seconds / 60)
-        if tracker.is_inventory_recommended():
-            logger.info("Inventory collection required")
-            # t1 = threading.Thread(target=collect_inventory, args=(conn, tracker))
-            # threads.append(t1)
-            collect_inventory(conn, tracker)
-            tracker.record_inventory()
-
-        if tracker.last_inventory:
-            # t2 = threading.Thread(target=collect_performance, args=(conn, tracker))
-            # threads.append(t2)
-            collect_performance(conn, tracker)
-            tracker.record_performance()
+        # tracker = foglight.model.CollectionTracker(inventory_frequency.seconds / 60)
+        # if tracker.is_inventory_recommended():
+        #     logger.info("Inventory collection required")
+        #     # t1 = threading.Thread(target=collect_inventory, args=(conn, tracker))
+        #     # threads.append(t1)
+        #     collect_inventory(conn, tracker)
+        #     tracker.record_inventory()
+        #
+        # if tracker.last_inventory:
+        #     # t2 = threading.Thread(target=collect_performance, args=(conn, tracker))
+        #     # threads.append(t2)
+        #     collect_performance(conn, tracker)
+        #     tracker.record_performance()
 
         # for t in threads:
         #     t.start()
         #
         # for t in threads:
         #     t.join()
+
+        arrays = getArrays(conn)
+        debug("arrays:", len(arrays))
+
+        for ps_array in arrays:
+            debug("array:", ps_array.tomof())
+            # getMaskingMappingViews(conn, ps_array)
+            getSCSIProtocolControllers(conn, ps_array)
+            break
 
     # handle any exception
     except CIMError as err:

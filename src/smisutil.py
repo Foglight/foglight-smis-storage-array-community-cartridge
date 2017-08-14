@@ -545,6 +545,194 @@ def getPoolDiskMap(conn, pools, disks):
     return poolDiskMap
 
 
+def getMaskingMappingViews(conn, array):
+    mVolumeMappingMaskingLookup = {}
+    try:
+        hardwareIDMgmtServices = conn.AssociatorNames(array.path,
+                                     AssocClass="CIM_HostedService",
+                                     ResultClass="CIM_StorageHardwareIDManagementService")
+        if None == hardwareIDMgmtServices or 0 >= len(hardwareIDMgmtServices):
+            print("No hardware ID management service for storage array {0}", array.getItem("ElementName"))
+            return False
+
+
+        storageHarwareIDs = conn.Associators(hardwareIDMgmtServices[0],
+                                     AssocClass="CIM_ConcreteDependency",
+                                     ResultClass="CIM_StorageHardwareID")
+        if None == storageHarwareIDs or 0 >= len(storageHarwareIDs):
+            print("No hardware IDs found for storage array {0}", array.getItem("ElementName"))
+            return False
+
+        for hardwareID in storageHarwareIDs:
+            views = conn.References(hardwareID.path,
+                                    ResultClass="SNIA_MaskingMappingView")
+
+            for view in views:
+                # print("view",  view.tomof())
+                volumeID = view.get("LogicalDevice")
+                volumeMappingViews = mVolumeMappingMaskingLookup[volumeID]
+                if None == volumeMappingViews:
+                    volumeMappingViews = []
+                    mVolumeMappingMaskingLookup[volumeID] = volumeMappingViews
+                volumeMappingViews.append(view)
+
+    except Exception, e:
+        print(e)
+    return mVolumeMappingMaskingLookup
+
+
+def getSCSIProtocolControllers(conn, array):
+    mSCSIProtocolControllers = {}
+    mStorageHardwareIDLookup = None
+    mAuthorizedSubjectLookup = None
+    try:
+        # CIM_ProtocolControllerMaskingCapabilities: Defines characteristics of how volumes
+        # can be mapped/masked on the storage array controller ports.
+        PCMCs = conn.Associators(array.path,
+                                    AssocClass="CIM_ElementCapabilities",
+                                    ResultClass="CIM_ProtocolControllerMaskingCapabilities")
+        SPCs = None
+        configSvc = conn.AssociatorNames(array.path,
+                                    AssocClass="CIM_HostedService",
+                                    ResultClass="CIM_ControllerConfigurationService")
+
+        if None != configSvc and 0 < len(configSvc):
+            # Get only SCSIProtocolControllers for this system
+            SPCs = conn.Associators(configSvc[0],
+                                    AssocClass="CIM_ConcreteDependency",
+                                    ResultClass="CIM_SCSIProtocolController")
+        if None == SPCs:
+            # some use this association (conformant?)
+            SPCs = conn.Associators(array.path,
+                                    AssocClass="CIM_SystemDevice",
+                                    ResultClass="CIM_SCSIProtocolController")
+
+        if None == SPCs:
+            # Desperate measures...Get all SCSIProtocolControllers found on the CIMOM
+            SPCs = conn.EnumerateInstances("CIM_SCSIProtocolController")
+
+        if None == SPCs or 0 >= len(SPCs):
+            print("No SCSIProtocolControllers found for Storage Array \"{0}\"", array["ElementName"])
+            return
+
+        # Cache the storage hardware ID and authorized subject instances
+        if None == mStorageHardwareIDLookup:
+            mStorageHardwareIDLookup = {}
+            objs = conn.EnumerateInstances("CIM_StorageHardwareID",
+                                    namespace = array.path.namespace,
+                                    DeepInheritance = True)
+            for obj in objs:
+                obj.path.host = array.path.host
+                mStorageHardwareIDLookup[obj.path.__str__()] = obj
+
+
+        if None == mAuthorizedSubjectLookup:
+            mAuthorizedSubjectLookup = {}
+            assocs = conn.EnumerateInstances("CIM_AuthorizedSubject",
+                                           namespace=array.path.namespace,
+                                           DeepInheritance=True)
+
+            for ci in assocs:
+                mAuthorizedSubjectLookup[ci] = ci
+
+        # print(mAuthorizedSubjectLookup)
+        for spc in SPCs:
+            # Add StorageHardwareIDs associated with the SCSIProtocolController
+            authPrivileges = conn.AssociatorNames(spc.path,
+                                    AssocClass="CIM_AuthorizedTarget",
+                                    ResultClass="CIM_AuthorizedPrivilege")
+            if None != authPrivileges and 0 < len(authPrivileges):
+                for ap in authPrivileges:
+                    # print("ap", ap)
+                    storHardwareIDs = getAssociatedEntities(ap, mAuthorizedSubjectLookup, mStorageHardwareIDLookup)
+                    spc.__setitem__("storHardwareIDs", storHardwareIDs)
+                    # print("storHardwareIDs", storHardwareIDs)
+
+            # The CIM_ProtocolControllerForUnit associates a Volume to this SPC. It contains a property,
+            # "DeviceNumber", that is the LUN of this association of a Volume to a Port.
+            pcfuLookup = {}
+            kProtocolControllerForUnitPropList = {
+                "CreationClassName",
+                "DeviceID",
+                "SystemCreationClassName",
+                "SystemName",
+                "DeviceNumber"
+            };
+            pcfus = conn.References(spc.path,
+                                        ResultClass="CIM_ProtocolControllerForUnit",
+                                        Role="Antecedent",
+                                        includeClassOrigin=False)
+            for pcfu in pcfus:
+                pcPath = pcfu.get("Antecedent")
+                volumePath = pcfu.get("Dependent")
+                key = pcPath.__str__() + volumePath.__str__()
+
+                # print(pcfu.tomof())
+                if not pcfuLookup.__contains__(key):
+                    pcfuLookup[key] = pcfu
+                    # spc.__setitem__("pcfu", pcfu)
+
+                    spcList = mSCSIProtocolControllers.get(volumePath.__str__())
+                    if None == spcList:
+                        spcList = []
+                        mSCSIProtocolControllers[volumePath.__str__()] = spcList
+                    spcList.append(spc)
+
+            nameFormat = spc.get("NameFormat")
+            spcName = spc.get("Name")
+            isISCSI = "iSCSI Name" == nameFormat or (None != spcName and spcName.__contains__("iqn"))
+            print("isISCSI", isISCSI, nameFormat, spcName)
+            print(spc.tomof())
+
+            # Add FCPorts associated with the SCSIProtocolController
+            # FCPort is associated to a SCSIProtocolController through
+            # SAPAvailableForElement -> SCSIProtocolEndpoint -> DeviceSAPImplementation
+            SPEs = conn.Associators(spc.path,
+                                        AssocClass="CIM_SAPAvailableForElement",
+                                        ResultClass="CIM_SCSIProtocolEndpoint")
+            for spe in SPEs:
+                speName= spe.get("Name")
+                if isISCSI or (None != speName and speName.contains("iqn")):
+                    spe.__setitem__("PermanentAddress", speName)
+                    spc.__setitem__("spe", spe)
+                else:
+                    ports = conn.Associators(spe.path,
+                                        AssocClass="CIM_DeviceSAPImplementation",
+                                        ResultClass="CIM_NetworkPort")
+                    if None == ports and len(ports) > 0:
+                        spc.__setitem__("ports", ports)
+
+    except Exception, e:
+        print(e)
+    return mSCSIProtocolControllers
+
+
+def getAssociatedEntities(entity, assocs, entities):
+    result = []
+    for assoc in assocs.values():
+        refs = assoc.values()
+        found = False
+        objResult = None
+
+        if refs[0] == entity:
+
+            objResult = entities.get(refs[1].__str__())
+            if None != objResult:
+                found = True
+
+        if not found:
+            if refs[1] == entity:
+
+                objResult = entities.get(refs[0].__str__())
+                if None != objResult:
+                    found = True
+
+        if found:
+            result.append(objResult)
+
+    return result
+
+
 def getControllerStatistics(conn, controller, statAssociations, statObjectMap):
     controllerStat = getAssociatedStatistics(conn, controller.path, statAssociations, statObjectMap)
     # print("controllerStat", controllerStat)
