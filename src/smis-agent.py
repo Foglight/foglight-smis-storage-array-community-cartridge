@@ -157,7 +157,6 @@ def collect_performance(conn, tracker):
     _start = timer()
 
     arrays = getArrays(conn)
-    # arrays = arrays[1:2]
     performances = []
     for ps_array in arrays:
         __namespace = ps_array.path.namespace
@@ -283,39 +282,15 @@ def execute_request(server_url, creds, namespace):
         conn = WBEMConnection(server_url, creds, default_namespace=namespace, verify=False, timeout=1200)
         debug("conn:", conn)
 
-        # collect_inventory(conn)
-        # print("="*100)
-        # collect_performance(conn)
+        tracker = foglight.model.CollectionTracker(inventory_frequency.seconds / 60)
+        if tracker.is_inventory_recommended():
+            logger.info("Inventory collection required")
+            collect_inventory(conn, tracker)
+            tracker.record_inventory()
 
-        threads = []
-        # tracker = foglight.model.CollectionTracker(inventory_frequency.seconds / 60)
-        # if tracker.is_inventory_recommended():
-        #     logger.info("Inventory collection required")
-        #     # t1 = threading.Thread(target=collect_inventory, args=(conn, tracker))
-        #     # threads.append(t1)
-        #     collect_inventory(conn, tracker)
-        #     tracker.record_inventory()
-        #
-        # if tracker.last_inventory:
-        #     # t2 = threading.Thread(target=collect_performance, args=(conn, tracker))
-        #     # threads.append(t2)
-        #     collect_performance(conn, tracker)
-        #     tracker.record_performance()
-
-        # for t in threads:
-        #     t.start()
-        #
-        # for t in threads:
-        #     t.join()
-
-        arrays = getArrays(conn)
-        debug("arrays:", len(arrays))
-
-        for ps_array in arrays:
-            debug("array:", ps_array.tomof())
-            # getMaskingMappingViews(conn, ps_array)
-            getSCSIProtocolControllers(conn, ps_array)
-            break
+        if tracker.last_inventory:
+            collect_performance(conn, tracker)
+            tracker.record_performance()
 
     # handle any exception
     except CIMError as err:

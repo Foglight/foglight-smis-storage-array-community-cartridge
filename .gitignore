@@ -82,6 +82,7 @@ __pycache__/
 .Python
 env/
 build/
+state/
 develop-eggs/
 dist/
 downloads/
