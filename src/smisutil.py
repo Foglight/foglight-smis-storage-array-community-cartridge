@@ -43,17 +43,22 @@ def getArray(conn):
 
 def getArrays(conn):
     managedElements = getElementsForProfile(conn, "Array")
+    print('managedElements:', len(managedElements))
 
     arrays = []
     _operationalStatusValues = None
     for m in managedElements:
         if not is_subclass(conn, m.path.namespace, "CIM_ComputerSystem", m.classname):
+            print('Array skipped because it is not a CIM_ComputerSystem')
             continue
 
-        if not {3, 15}.issubset(m.get('Dedicated')):
+        print('Dedicated:', m.get('Dedicated'))
+        if not {15}.issubset(m.get('Dedicated')):
+            print('Array skipped because it is not a block storage system')
             continue
 
         if not getProductInfo(conn, m):
+            print('Array skipped because no vendor and/or model information found')
             continue
 
         if _operationalStatusValues == None:

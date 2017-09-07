@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+  QUEST SOFTWARE PROPRIETARY INFORMATION
+  
+  This software is confidential.  Quest Software Inc., or one of its
+  subsidiaries, has supplied this software to you under terms of a
+  license agreement, nondisclosure agreement or both.
+  
+  You may not copy, disclose, or use this software except in accordance with
+  those terms.
+  
+  
+  Copyright 2017 Quest Software Inc.
+  ALL RIGHTS RESERVED.
+  
+  QUEST SOFTWARE INC. MAKES NO REPRESENTATIONS OR
+  WARRANTIES ABOUT THE SUITABILITY OF THE SOFTWARE,
+  EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+  TO THE IMPLIED WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE, OR
+  NON-INFRINGEMENT.  QUEST SOFTWARE SHALL NOT BE
+  LIABLE FOR ANY DAMAGES SUFFERED BY LICENSEE
+  AS A RESULT OF USING, MODIFYING OR DISTRIBUTING
+  THIS SOFTWARE OR ITS DERIVATIVES.
+-->
+
+<!-- All the Ivy and task setup and resolve code in a separate build file and
+     outside a target so that it will always be invoked -->
+
+<project name="smisarray" default="car" basedir="."
+         xmlns:ivy="antlib:org.apache.ivy.ant"
+         xmlns:quest="quest:com.quest.build">
+
+    <dirname property="build-common.basedir" file="${ant.file.common-download-all-deps}"/>
+
+    <property name="download.dir"  location="${build-common.basedir}/build/downloaded"/>
+    <property name="bootstrap.dir" location="${download.dir}/bootstrap"/>
+    <property name="cache.dir"     location="${download.dir}/cache"/>
+
+    <!--
+        Pull in the versions in case we building against a different branch of something.
+    -->
+    <property file="./version.properties"/>
+
+    <!-- Check to see if we are online at the moment -->
+    <condition property="is.online" value="true">
+        <http url="http://torrepos.prod.quest.corp/ivysettings"/>
+    </condition>
+
+    <target name="-settings-online" if="is.online">
+        <echo level="info">Loading online settings</echo>
+
+        <property name="public.settings.url" value="http://torrepos.prod.quest.corp/ivysettings"/>
+
+        <!-- In online mode, we must check the following revision patterns to see
+            if they have changed or not. Anything with a revision of "latest.(anything) OR
+             which contains any of "[]()," is considered changing. -->
+        <property name="rev.patterns.that.change" value="latest\..*|.*[,\(\)\[\]].*"/>
+
+        <!-- If requested, we can download native code -->
+        <condition property="should.download.native" value="true">
+            <isset property="need.native.download"/>
+        </condition>
+    </target>
+
+    <target name="-settings-offline" unless="is.online">
+        <echo level="info">Loading offline settings</echo>
+
+        <!-- In offline mode, we can only use the cache so don't try and check timestamps on it -->
+        <property name="ivy.cache.ttl.default" value="eternal"/>
+
+        <!-- In offline mode, assume that all revisions in the cache are OK and don't need
+             to be checked for changes. Anything with a revision of "latest.(anything) OR
+             which contains any of "[]()," is considered changing. -->
+        <property name="rev.patterns.that.change" value="this matches nothing"/>
+
+        <!-- Load the Ivy settings from the main URL if possible, and from
+             the local file as a fallback when building off the Quest network.
+             This will URL encode the filename (and add file://) so that it can
+             be used by Ivy. It will also escape the ":" in "c:/..." -->
+        <whichresource property="public.settings.url" resource="ivysettings.xml"
+                       classpath="${bootstrap.dir}/bootstrap"/>
+    </target>
+
+    <target name="-ivy-prepare">
+        <mkdir dir="${bootstrap.dir}/bootstrap"/>
+
+        <get src="http://torrepos.prod.quest.corp/rmdata/dell/ivy-bootstrap/1.0/docs/ivy-bootstrap.xml"
+             dest="${bootstrap.dir}/bootstrap/ivy-bootstrap.xml"
+             ignoreerrors="true"
+             verbose="false"
+             usetimestamp="true"/>
+
+        <ant antfile="${bootstrap.dir}/bootstrap/ivy-bootstrap.xml">
+            <property name="quest.ivy.bootstrap.dir" value="${bootstrap.dir}"/>
+        </ant>
+        <taskdef resource="org/apache/ivy/ant/antlib.xml"
+                 uri="antlib:org.apache.ivy.ant">
+            <classpath>
+                <fileset dir="${bootstrap.dir}" includes="*.jar" />
+            </classpath>
+        </taskdef>
+    </target>
+
+    <target name="-cache-settings" depends="-ivy-prepare,-settings-online,-settings-offline">
+        <whichresource property="settings.url" resource="ivysettings.xml"
+                       classpath="${build-common.basedir}"/>
+
+        <ivy:configure url="${settings.url}" override="true"/>
+
+        <echo level="info">Downloading the Quest ant-addons</echo>
+        <ivy:resolve   organisation="quest" module="ant-addons" branch="3" revision="latest.integration" inline="true" conf="*" log="download-only"/>
+        <ivy:cachepath organisation="quest" module="ant-addons" branch="3" revision="latest.integration" inline="true" conf="*" type="jar" pathid="quest-ant-addons.latest.classpath"/>
+        <taskdef resource="com/quest/build/antlib.xml" onerror="fail" format="xml"
+                 uri="quest:com.quest.build"
+                 classpathref="quest-ant-addons.latest.classpath"/>
+
+        <!-- Make sure this is set, we'll need it soon enough -->
+        <quest:platformname property="build.platform"/> <!-- build system will override for cross-compiles -->
+
+        <!-- Reconfigure after the inline resolve. -->
+        <ivy:configure url="${settings.url}" override="true"/>
+    </target>
+
+    <property name="confs.to.publish" value="cartridge,docs"/>
+    <target name="publish" depends="car,-cache-settings">
+        <!-- Resolve (but don't download) all dependencies before publishing -->
+        <ivy:resolve haltonfailure="false"
+                     type="this-matches-nothing"/>
+
+        <property name="ivy.deliver.revision" value="${build.number}"/>
+        <property name="ivy.publish.resolver" value="${publish.resolver}"/>
+
+        <ivy:publish conf="${confs.to.publish}"
+                     resolver="${ivy.publish.resolver}"
+                     srcivypattern="ivy.xml"
+                     warnonmissing="true"
+                     haltonmissing="true"
+                     update="true">
+
+            <artifacts pattern="artifacts/[artifact].[ext]"/>
+        </ivy:publish>
+    </target>
+
+    <target name="car">
+        <exec dir="bin" executable="cmd" failonerror="true">
+            <arg line="/c package-agent.bat" />
+        </exec>
+    </target>
+
+    <target name="clean">
+        <delete quiet="true" includeemptydirs="true">
+            <fileset dir="build"/>
+            <fileset dir="artifacts"/>
+        </delete>
+    </target>
+</project>

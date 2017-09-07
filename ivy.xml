@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+  QUEST SOFTWARE PROPRIETARY INFORMATION
+  
+  This software is confidential.  Quest Software Inc., or one of its
+  subsidiaries, has supplied this software to you under terms of a
+  license agreement, nondisclosure agreement or both.
+  
+  You may not copy, disclose, or use this software except in accordance with
+  those terms.
+  
+  
+  Copyright 2017 Quest Software Inc.
+  ALL RIGHTS RESERVED.
+  
+  QUEST SOFTWARE INC. MAKES NO REPRESENTATIONS OR
+  WARRANTIES ABOUT THE SUITABILITY OF THE SOFTWARE,
+  EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+  TO THE IMPLIED WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE, OR
+  NON-INFRINGEMENT.  QUEST SOFTWARE SHALL NOT BE
+  LIABLE FOR ANY DAMAGES SUFFERED BY LICENSEE
+  AS A RESULT OF USING, MODIFYING OR DISTRIBUTING
+  THIS SOFTWARE OR ITS DERIVATIVES.
+-->
+
+<ivy-module version="2.0"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xsi:noNamespaceSchemaLocation="http://ant.apache.org/ivy/schemas/ivy.xsd"
+            xmlns:e="http://ant.apache.org/ivy/extra">
+
+    <info organisation="quest"
+          module="smisarray-pythonagent"
+          status="${publish.status}"
+          branch="${publish.branch}"
+          e:version="${cartridge.version}"
+          e:build-url="${build.url}">
+        <ivyauthor name="Foglight Storage Management" url="mailto:DSG.RD.Foglight.IPM.Storage@quest.com"/>
+    </info>
+
+    <configurations>
+        <conf name="cartridge" description="A carball containing the main agent and server UI" visibility="public"/>
+    </configurations>
+
+     <publications>
+        <artifact name="SMISStorageAgent-${cartridge.version.underscore}" type="archive" ext="car" conf="cartridge"/>
+    </publications>
+
+    <dependencies/>
+
+</ivy-module>

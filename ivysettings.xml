@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+  QUEST SOFTWARE PROPRIETARY INFORMATION
+  
+  This software is confidential.  Quest Software Inc., or one of its
+  subsidiaries, has supplied this software to you under terms of a
+  license agreement, nondisclosure agreement or both.
+  
+  You may not copy, disclose, or use this software except in accordance with
+  those terms.
+  
+  
+  Copyright 2017 Quest Software Inc.
+  ALL RIGHTS RESERVED.
+  
+  QUEST SOFTWARE INC. MAKES NO REPRESENTATIONS OR
+  WARRANTIES ABOUT THE SUITABILITY OF THE SOFTWARE,
+  EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+  TO THE IMPLIED WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE, OR
+  NON-INFRINGEMENT.  QUEST SOFTWARE SHALL NOT BE
+  LIABLE FOR ANY DAMAGES SUFFERED BY LICENSEE
+  AS A RESULT OF USING, MODIFYING OR DISTRIBUTING
+  THIS SOFTWARE OR ITS DERIVATIVES.
+-->
+
+<ivysettings>
+    <!-- Load the public settings file -->
+    <include url="${public.settings.url}"/>
+
+    <!-- We use our own resolver chain that includes the resolvers from the public
+         settings file so that we can tell it which revisions are "changing". That is
+         can have new files without the revision number changing. For our own builds
+         we use latest.integration as the rev number, but publish to it many times.
+
+         I don't want to set "changing=true" in the ivy.xml file's dependency section
+         as that forces Ivy to hit the repo every time and thus breaks offline builds.
+    -->
+    <settings defaultResolver="fsm"/>
+    <resolvers>
+        <chain name="fsm" returnFirst="true" changingMatcher="regexp" changingPattern="${rev.patterns.that.change}">
+            <resolver ref="local"/>
+            <resolver ref="main"/>
+        </chain>
+    </resolvers>
+
+    <!-- And this is our private stuff -->
+    <triggers>
+      <ant-call target="-retrieve-callback-findbugs" prefix="dep"
+                event="post-retrieve-artifact" filter="organisation=findbugs AND artifact=findbugs"/>
+
+      <!--
+        This one extracts all the bits we need from the forge-common artifacts, but only
+        when we're retrieving artifacts for the build conf, not the bootstrap conf.
+
+        I could not get the Ivy filtering to work correctly so all the filtering
+        on when to run the task is done in the task using dependent targets.
+      -->
+      <ant-call target="-extract-fglam-callback" prefix="dep" event="post-retrieve"/>
+      <ant-call target="-extract-fglant-callback" prefix="dep" event="post-retrieve"/>
+
+    </triggers>
+</ivysettings>
