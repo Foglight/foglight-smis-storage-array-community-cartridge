@@ -2,12 +2,12 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="57031d5b-1335-4ba1-83b7-beab461b924d" name="Default" comment="">
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/build.xml" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/ivysettings.xml" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/version.properties" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/config/asp-eva1.json" afterPath="" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/bin/package-agent.bat" afterPath="$PROJECT_DIR$/bin/package-agent.bat" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/smis-agent.py" afterPath="$PROJECT_DIR$/src/smis-agent.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/smis_processors.py" afterPath="$PROJECT_DIR$/src/smis_processors.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/smisutil.py" afterPath="$PROJECT_DIR$/src/smisutil.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/version.properties" afterPath="$PROJECT_DIR$/version.properties" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -25,14 +25,14 @@
       <file leaf-file-name="smisutil.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/smisutil.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="68">
-              <caret line="45" column="51" lean-forward="false" selection-start-line="45" selection-start-column="51" selection-end-line="45" selection-end-column="51" />
+            <state relative-caret-position="340">
+              <caret line="876" column="24" lean-forward="false" selection-start-line="876" selection-start-column="4" selection-end-line="876" selection-end-column="24" />
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="build.xml" pinned="false" current-in-tab="true">
+      <file leaf-file-name="build.xml" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/build.xml">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="510">
@@ -62,41 +62,21 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="version.properties" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/version.properties">
+      <file leaf-file-name="smis_processors.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/smis_processors.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="723">
-              <caret line="48" column="4" lean-forward="false" selection-start-line="48" selection-start-column="4" selection-end-line="48" selection-end-column="4" />
+            <state relative-caret-position="350">
+              <caret line="404" column="65" lean-forward="true" selection-start-line="404" selection-start-column="65" selection-end-line="404" selection-end-column="65" />
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="ivysettings.xml" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/ivysettings.xml">
+      <file leaf-file-name="cim_obj.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/pywbemReq/cim_obj.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="771">
-              <caret line="64" column="0" lean-forward="false" selection-start-line="64" selection-start-column="0" selection-end-line="64" selection-end-column="0" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="package-agent.bat" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/bin/package-agent.bat">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="510">
-              <caret line="30" column="0" lean-forward="false" selection-start-line="30" selection-start-column="0" selection-end-line="30" selection-end-column="0" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="agent-collectors.json" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/config/agent-collectors.json">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="34">
-              <caret line="2" column="30" lean-forward="false" selection-start-line="2" selection-start-column="30" selection-end-line="2" selection-end-column="30" />
+            <state relative-caret-position="-874">
+              <caret line="1627" column="8" lean-forward="false" selection-start-line="1627" selection-start-column="8" selection-end-line="1627" selection-end-column="8" />
               <folding />
             </state>
           </provider>
@@ -105,11 +85,21 @@
       <file leaf-file-name="smis-agent.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/smis-agent.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="4760">
-              <caret line="300" column="13" lean-forward="false" selection-start-line="300" selection-start-column="13" selection-end-line="300" selection-end-column="13" />
+            <state relative-caret-position="459">
+              <caret line="248" column="29" lean-forward="false" selection-start-line="248" selection-start-column="12" selection-end-line="248" selection-end-column="29" />
               <folding>
                 <element signature="e#15#52#0" expanded="true" />
               </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="version.properties" pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/version.properties">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="746">
+              <caret line="46" column="14" lean-forward="false" selection-start-line="46" selection-start-column="14" selection-end-line="46" selection-end-column="14" />
+              <folding />
             </state>
           </provider>
         </entry>
@@ -118,8 +108,6 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>References</find>
-      <find>path</find>
       <find>getObjects</find>
       <find>EnumerateInstances</find>
       <find>getAssociated</find>
@@ -146,8 +134,10 @@
       <find>cache.dir</find>
       <find>use.symlinks</find>
       <find>bootstrap.dir</find>
-      <find>local</find>
       <find>confs.to.publish</find>
+      <find>local</find>
+      <find>capab</find>
+      <find>filter=</find>
     </findStrings>
     <replaceStrings>
       <replace>conn</replace>
@@ -175,15 +165,16 @@
         <option value="D:/tmp/SMIS3/src/pywbemReq/cim_obj.py" />
         <option value="$PROJECT_DIR$/src/urllib3/connectionpool.py" />
         <option value="D:/tmp/jython-standalone/Lib/ssl.py" />
-        <option value="$PROJECT_DIR$/src/smis_processors.py" />
         <option value="D:/sdk/StorageSDK/lib/fsm/storage.py" />
-        <option value="$PROJECT_DIR$/src/smisutil.py" />
         <option value="$PROJECT_DIR$/config/agent-properties.json" />
-        <option value="$PROJECT_DIR$/src/smis-agent.py" />
         <option value="$PROJECT_DIR$/ivy.xml" />
-        <option value="$PROJECT_DIR$/version.properties" />
         <option value="$PROJECT_DIR$/bin/package-agent.bat" />
         <option value="$PROJECT_DIR$/build.xml" />
+        <option value="$PROJECT_DIR$/config/asp-vnxe.json" />
+        <option value="$PROJECT_DIR$/src/smisutil.py" />
+        <option value="$PROJECT_DIR$/src/smis-agent.py" />
+        <option value="$PROJECT_DIR$/src/smis_processors.py" />
+        <option value="$PROJECT_DIR$/version.properties" />
       </list>
     </option>
   </component>
@@ -254,6 +245,20 @@
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
           </PATH>
+          <PATH>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="smisarray" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="smisarray" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="config" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+          </PATH>
         </subPane>
       </pane>
     </panes>
@@ -263,8 +268,8 @@
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
-      <recent name="C:\src\Python\smisarray" />
       <recent name="C:\src\Python\smisarray\config" />
+      <recent name="C:\src\Python\smisarray" />
       <recent name="C:\src\Python\smisarray\src" />
     </key>
   </component>
@@ -453,9 +458,9 @@
   </component>
   <component name="ToolWindowManager">
     <frame x="-1928" y="-8" width="1936" height="1056" extended-state="6" />
-    <editor active="false" />
+    <editor active="true" />
     <layout>
-      <window_info id="Project" active="true" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.19115324" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.19115324" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.20864865" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="true" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="10" side_tool="false" content_ui="tabs" />
@@ -556,11 +561,9 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/config/asp-fujitsu.json" />
-    <entry file="file://$PROJECT_DIR$/config/asp-vnxe.json" />
     <entry file="file://$PROJECT_DIR$/config/asp-vmax.json" />
     <entry file="file://$PROJECT_DIR$/config/asp-usp1.json" />
     <entry file="file://$PROJECT_DIR$/config/asp-purestorage.json" />
-    <entry file="file://$PROJECT_DIR$/config/asp-ams2.json" />
     <entry file="file://$PROJECT_DIR$/src/fsm/rollups.py" />
     <entry file="file://D:/sdk/StorageSDK/lib/foglight/topology.py" />
     <entry file="file://$PROJECT_DIR$/src/smisagentproperties.py">
@@ -572,11 +575,11 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/config/asp-huawei.json" />
     <entry file="file://D:/sdk/StorageSDK/lib/storage.bat.py" />
-    <entry file="file://$PROJECT_DIR$/config/asp-ams1.json" />
     <entry file="file://$USER_HOME$/.PyCharmCE2016.3/system/python_stubs/-1602782563/__builtin__.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="13056">
           <caret line="768" column="8" lean-forward="false" selection-start-line="768" selection-start-column="8" selection-end-line="768" selection-end-column="8" />
+          <folding />
         </state>
       </provider>
     </entry>
@@ -593,13 +596,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="4573">
           <caret line="275" column="6" lean-forward="false" selection-start-line="275" selection-start-column="6" selection-end-line="275" selection-end-column="6" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/pywbemReq/cim_obj.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="33558">
-          <caret line="1982" column="6" lean-forward="false" selection-start-line="1982" selection-start-column="6" selection-end-line="1982" selection-end-column="6" />
         </state>
       </provider>
     </entry>
@@ -646,14 +642,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/smis_processors.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="323">
-          <caret line="32" column="47" lean-forward="false" selection-start-line="32" selection-start-column="47" selection-end-line="32" selection-end-column="47" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/src/pywbemReq/cim_types.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="1887">
@@ -663,7 +651,6 @@
       </provider>
     </entry>
     <entry file="file://D:/sdk/StorageSDK/lib/foglight/model.py" />
-    <entry file="file://$PROJECT_DIR$/config/asp-clariion1.json" />
     <entry file="file://$PROJECT_DIR$/config/asp-eva1.json">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
@@ -683,24 +670,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="34">
           <caret line="2" column="30" lean-forward="false" selection-start-line="2" selection-start-column="30" selection-end-line="2" selection-end-column="30" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/smis-agent.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="4760">
-          <caret line="300" column="13" lean-forward="false" selection-start-line="300" selection-start-column="13" selection-end-line="300" selection-end-column="13" />
-          <folding>
-            <element signature="e#15#52#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/smisutil.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="68">
-          <caret line="45" column="51" lean-forward="false" selection-start-line="45" selection-start-column="51" selection-end-line="45" selection-end-column="51" />
           <folding />
         </state>
       </provider>
@@ -737,18 +706,18 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/version.properties">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="723">
-          <caret line="48" column="4" lean-forward="false" selection-start-line="48" selection-start-column="4" selection-end-line="48" selection-end-column="4" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/bin/test-agent.bat">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="527">
           <caret line="31" column="0" lean-forward="false" selection-start-line="31" selection-start-column="0" selection-end-line="31" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/build.xml">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="510">
+          <caret line="30" column="38" lean-forward="false" selection-start-line="30" selection-start-column="38" selection-end-line="30" selection-end-column="38" />
           <folding />
         </state>
       </provider>
@@ -761,10 +730,76 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/build.xml">
+    <entry file="file://$PROJECT_DIR$/src/pywbemReq/cim_obj.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="510">
-          <caret line="30" column="38" lean-forward="false" selection-start-line="30" selection-start-column="38" selection-end-line="30" selection-end-column="38" />
+        <state relative-caret-position="-874">
+          <caret line="1627" column="8" lean-forward="false" selection-start-line="1627" selection-start-column="8" selection-end-line="1627" selection-end-column="8" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/config/asp-vnxe.json">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="17">
+          <caret line="1" column="27" lean-forward="false" selection-start-line="1" selection-start-column="27" selection-end-line="1" selection-end-column="27" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/config/asp-ams1.json">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/config/asp-clariion1.json">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/config/asp-ams2.json">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/smis_processors.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="350">
+          <caret line="404" column="65" lean-forward="true" selection-start-line="404" selection-start-column="65" selection-end-line="404" selection-end-column="65" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/smisutil.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="340">
+          <caret line="876" column="24" lean-forward="false" selection-start-line="876" selection-start-column="4" selection-end-line="876" selection-end-column="24" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/smis-agent.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="459">
+          <caret line="248" column="29" lean-forward="false" selection-start-line="248" selection-start-column="12" selection-end-line="248" selection-end-column="29" />
+          <folding>
+            <element signature="e#15#52#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/version.properties">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="746">
+          <caret line="46" column="14" lean-forward="false" selection-start-line="46" selection-start-column="14" selection-end-line="46" selection-end-column="14" />
           <folding />
         </state>
       </provider>

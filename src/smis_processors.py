@@ -357,7 +357,7 @@ def processIscsiPortStats(array, iscsiPortStats, lastStats, _tracker):
     return None
 
 
-def processVolumeStats(array, volumeStats, lastStats, _tracker):
+def processVolumeStats(array, volumeStats, lastStats, _tracker, clockTickInterval):
     lastStatMap = {s['statID']: s for s in lastStats}
 
     for vStat in volumeStats:
@@ -410,12 +410,15 @@ def processVolumeStats(array, volumeStats, lastStats, _tracker):
             if None != busyPercent:
                 volume.set_metric("busy", busyPercent)
 
+            if None == clockTickInterval or 0 >= clockTickInterval:
+                clockTickInterval = 1
+
             if readIOTimeCounter > 0 and opsRead > 0:
-                volume.set_metric("latencyRead", readIOTimeCounter * 1000 / opsRead)
+                volume.set_metric("latencyRead", readIOTimeCounter / opsRead * clockTickInterval / 1000)
             if writeIOTimeCounter > 0 and opsWrite > 0:
-                volume.set_metric("latencyWrite", writeIOTimeCounter * 1000 / opsWrite)
+                volume.set_metric("latencyWrite", writeIOTimeCounter / opsWrite * clockTickInterval / 1000)
             if ioTimeCounter > 0 and opsTotal > 0:
-                volume.set_metric("latencyTotal", ioTimeCounter * 1000 / opsTotal)
+                volume.set_metric("latencyTotal", ioTimeCounter / opsTotal * clockTickInterval / 1000)
 
 
 
@@ -456,7 +459,7 @@ def processVolumeStats(array, volumeStats, lastStats, _tracker):
     return None
 
 
-def processDiskStats(array, diskStats, lastStats, _tracker):
+def processDiskStats(array, diskStats, lastStats, _tracker, clockTickInterval):
 
     lastStatMap = {s['statID']: s for s in lastStats}
 
@@ -505,14 +508,17 @@ def processDiskStats(array, diskStats, lastStats, _tracker):
             if None != busyPercent:
                 disk.set_metric("busy", busyPercent)
 
+            if None == clockTickInterval or 0 >= clockTickInterval:
+                clockTickInterval = 1
+
             if readIOTimeCounter > 0 and opsRead > 0:
-                disk.set_metric("latencyRead", readIOTimeCounter * 1000 / opsRead )
+                disk.set_metric("latencyRead", readIOTimeCounter / opsRead * clockTickInterval / 1000)
 
             if writeIOTimeCounter > 0 and opsWrite > 0:
-                disk.set_metric("latencyWrite", writeIOTimeCounter * 1000/ opsWrite )
+                disk.set_metric("latencyWrite", writeIOTimeCounter / opsWrite * clockTickInterval / 1000)
 
             if ioTimeCounter > 0 and opsTotal > 0:
-                disk.set_metric("latencyTotal", ioTimeCounter * 1000/ opsTotal )
+                disk.set_metric("latencyTotal", ioTimeCounter / opsTotal * clockTickInterval / 1000)
 
         except Exception, e:
             print(traceback.format_exc())
@@ -531,6 +537,7 @@ def submit_performance(model, performance, _tracker, update):
         iscsiPortStats = performance['iscsiPortStats']
         volumeStats = performance['volumeStats']
         diskStats = performance['diskStats']
+        clockTickInterval = performance['clockTickInterval']
 
         print("getArray", ps_array.get("SerialID"), ps_array.get("Vendor"))
         array = model.get_storage_array(
@@ -539,8 +546,8 @@ def submit_performance(model, performance, _tracker, update):
         processControllerStats(array, controllerStats, last_stats['controllerStats'], _tracker)
         processFcPortStats(array, fcPortStats,         last_stats['fcPortStats'],     _tracker, update)
         processIscsiPortStats(array, iscsiPortStats,   last_stats['iscsiPortStats'],  _tracker)
-        processVolumeStats(array, volumeStats,         last_stats['volumeStats'],     _tracker)
-        processDiskStats(array, diskStats,             last_stats['diskStats'],       _tracker)
+        processVolumeStats(array, volumeStats,         last_stats['volumeStats'],     _tracker, clockTickInterval)
+        processDiskStats(array, diskStats,             last_stats['diskStats'],       _tracker, clockTickInterval)
 
 
     f = open(last_stats_path, 'wb')

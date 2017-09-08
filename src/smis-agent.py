@@ -243,9 +243,14 @@ def collect_performance(conn, tracker):
         if len(diskStats) > 0:
             print("diskStatistics: %s" % (diskStats[0].tomof()), "\n")
 
+        statsCap = getStatsCapabilities(conn, ps_array)
+        clockTickInterval = None
+        if None != statsCap:
+            clockTickInterval = statsCap['ClockTickInterval']
+
         performances.append({'ps_array': ps_array,
             'controllerStats': controllerStats, 'fcPortStats': fcPortStats, 'iscsiPortStats': iscsiPortStats,
-            'volumeStats': volumeStats, 'diskStats': diskStats})
+            'volumeStats': volumeStats, 'diskStats': diskStats, 'clockTickInterval': clockTickInterval})
 
     try:
         update = foglight.topology.begin_data_collection()

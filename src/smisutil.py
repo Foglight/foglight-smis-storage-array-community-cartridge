@@ -873,3 +873,29 @@ def hasCIMClasses(conn, __namespace, classNames):
     CLASS_NAMES = getClassNames(conn, __namespace, None)
     return classNames.issubset(CLASS_NAMES)
 
+
+def getStatsCapabilities(conn, array):
+    statsService = conn.AssociatorNames(array.path,
+                                        AssocClass="CIM_HostedService",
+                                        ResultClass="CIM_BlockStatisticsService")
+
+    if None == statsService or len(statsService) < 1:
+        statsService = conn.AssociatorNames(array.path,
+                                        AssocClass="CIM_HostedService",
+                                        ResultClass="CIM_StorageConfigurationService")
+
+    if None == statsService or len(statsService) < 1:
+        print('No Storage Statistics Service found')
+        return None
+
+
+    statsCaps = conn.Associators(statsService[0],
+                                        AssocClass="CIM_ElementCapabilities",
+                                        ResultClass="CIM_BlockStatisticsCapabilities")
+
+    if None == statsCaps or len(statsCaps) < 1:
+        print('No Storage Statistics Capabilities found')
+        return None
+
+    print('statsCaps', statsCaps[0].tomof())
+    return statsCaps[0]
