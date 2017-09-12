@@ -398,29 +398,25 @@ def processVolumeStats(array, volumeStats, lastStats, _tracker, clockTickInterva
             writeIOTimeCounter = __getStatValue('WriteIOTimeCounter', vStat, lastStat, 1)
             ioTimeCounter = __getStatValue('IOTimeCounter', vStat, lastStat, 1)
             idleTimeCounter = __getStatValue('IdleTimeCounter', vStat, lastStat, 1)
-            if 0 == idleTimeCounter and durationInt > ioTimeCounter:
-                idleTimeCounter = durationInt - ioTimeCounter
 
             volume.set_metric("opsRead", opsRead / durationInt)
             volume.set_metric("opsWrite", opsWrite / durationInt)
             volume.set_metric("opsTotal", opsTotal / durationInt)
 
-            busyPercent = getBusyPercent(ioTimeCounter, idleTimeCounter)
+            if None != clockTickInterval and clockTickInterval > 0:
+                if readIOTimeCounter > 0 and opsRead > 0:
+                    volume.set_metric("latencyRead", readIOTimeCounter / opsRead * clockTickInterval / 1000)
+                if writeIOTimeCounter > 0 and opsWrite > 0:
+                    volume.set_metric("latencyWrite", writeIOTimeCounter / opsWrite * clockTickInterval / 1000)
+                if ioTimeCounter > 0 and opsTotal > 0:
+                    volume.set_metric("latencyTotal", ioTimeCounter / opsTotal * clockTickInterval / 1000)
 
-            if None != busyPercent:
-                volume.set_metric("busy", busyPercent)
-
-            if None == clockTickInterval or 0 >= clockTickInterval:
-                clockTickInterval = 1
-
-            if readIOTimeCounter > 0 and opsRead > 0:
-                volume.set_metric("latencyRead", readIOTimeCounter / opsRead * clockTickInterval / 1000)
-            if writeIOTimeCounter > 0 and opsWrite > 0:
-                volume.set_metric("latencyWrite", writeIOTimeCounter / opsWrite * clockTickInterval / 1000)
-            if ioTimeCounter > 0 and opsTotal > 0:
-                volume.set_metric("latencyTotal", ioTimeCounter / opsTotal * clockTickInterval / 1000)
-
-
+                durationTimeCounter = durationInt * 10^6 / clockTickInterval
+                if (None == idleTimeCounter or 0 == idleTimeCounter) and durationTimeCounter > ioTimeCounter:
+                    idleTimeCounter = durationTimeCounter - ioTimeCounter
+                busyPercent = getBusyPercent(ioTimeCounter, idleTimeCounter)
+                if None != busyPercent:
+                    volume.set_metric("busy", busyPercent)
 
             if opsRead > 0:
                 cacheReadHits = 99.0
@@ -497,28 +493,25 @@ def processDiskStats(array, diskStats, lastStats, _tracker, clockTickInterval):
             writeIOTimeCounter = __getStatValue('WriteIOTimeCounter', dStat, lastStat, 1)
             ioTimeCounter = __getStatValue('IOTimeCounter', dStat, lastStat, 1)
             idleTimeCounter = __getStatValue('IdleTimeCounter', dStat, lastStat, 1)
-            if 0 == idleTimeCounter and durationInt > ioTimeCounter:
-                idleTimeCounter = durationInt - ioTimeCounter
 
             disk.set_metric("opsRead", opsRead / durationInt)
             disk.set_metric("opsWrite", opsWrite / durationInt)
             disk.set_metric("opsTotal", opsTotal / durationInt)
 
-            busyPercent = getBusyPercent(ioTimeCounter, idleTimeCounter)
-            if None != busyPercent:
-                disk.set_metric("busy", busyPercent)
+            if None != clockTickInterval and clockTickInterval > 0:
+                if readIOTimeCounter > 0 and opsRead > 0:
+                    disk.set_metric("latencyRead", readIOTimeCounter / opsRead * clockTickInterval / 1000)
+                if writeIOTimeCounter > 0 and opsWrite > 0:
+                    disk.set_metric("latencyWrite", writeIOTimeCounter / opsWrite * clockTickInterval / 1000)
+                if ioTimeCounter > 0 and opsTotal > 0:
+                    disk.set_metric("latencyTotal", ioTimeCounter / opsTotal * clockTickInterval / 1000)
 
-            if None == clockTickInterval or 0 >= clockTickInterval:
-                clockTickInterval = 1
-
-            if readIOTimeCounter > 0 and opsRead > 0:
-                disk.set_metric("latencyRead", readIOTimeCounter / opsRead * clockTickInterval / 1000)
-
-            if writeIOTimeCounter > 0 and opsWrite > 0:
-                disk.set_metric("latencyWrite", writeIOTimeCounter / opsWrite * clockTickInterval / 1000)
-
-            if ioTimeCounter > 0 and opsTotal > 0:
-                disk.set_metric("latencyTotal", ioTimeCounter / opsTotal * clockTickInterval / 1000)
+                durationTimeCounter = durationInt * 10^6 / clockTickInterval
+                if (None == idleTimeCounter or 0 == idleTimeCounter) and durationTimeCounter > ioTimeCounter:
+                    idleTimeCounter = durationTimeCounter - ioTimeCounter
+                busyPercent = getBusyPercent(ioTimeCounter, idleTimeCounter)
+                if None != busyPercent:
+                    disk.set_metric("busy", busyPercent)
 
         except Exception, e:
             print(traceback.format_exc())
