@@ -92,10 +92,11 @@ d	Click Finish.
 </pre>
 
 ## Reference:
+<pre>
 [1] Quest Foglight™ eDocs https://support.quest.com/Foglight™-for-virtualization-enterprise-edition/
 [2] SNIA, SMI architecture https://www.snia.org/forums/smi/knowledge/smis-getting-started/smi_architecture
 [3] SNIA, SMI Overview https://www.snia.org/sites/default/files/technical_work/SMIS/SMI-Sv1.6.1r6_Overview.book_.pdf
-
+</pre>
 
 
 
