@@ -6,9 +6,9 @@ Foglight™ for Storage Management provides complete monitoring of virtual storage
 ## What is SMI-S
 The SMI-S, developed by the SMI organization of the SNIA, is an open standard used to manage storage networks of multiple vendors. The SMI-S defines a set of secure and reliable interfaces that help the storage management system identify, classify, and monitor physical and logical resources in a storage area network (SAN).
 Based on the existing technical standards, the SMI-S covers:
-	Common information model (CIM) - The CIM is developed by a distributed management task force (DMTF) to describe concept models of data. The CIM uses a layered object-oriented system structure to model for managed resources. Devices and components can thus be described in an object-oriented manner.
-	Web-based enterprise management (WBEM) - The WBEM is an enterprise-class management system structure developed by a DMTF. The WBEM assembles management protocols and standard Internet technologies for unified management in a distributed operating environment, improving data exchange capabilities across technologies and platforms.
-	Service location protocol (SLP) - The SLP is used to discover the SMI-S server and its functions in a storage network environment.
+* Common information model (CIM) - The CIM is developed by a distributed management task force (DMTF) to describe concept models of data. The CIM uses a layered object-oriented system structure to model for managed resources. Devices and components can thus be described in an object-oriented manner.
+* Web-based enterprise management (WBEM) - The WBEM is an enterprise-class management system structure developed by a DMTF. The WBEM assembles management protocols and standard Internet technologies for unified management in a distributed operating environment, improving data exchange capabilities across technologies and platforms.
+* Service location protocol (SLP) - The SLP is used to discover the SMI-S server and its functions in a storage network environment.
  
 As an open standard, the SMI-S expands general-purpose capabilities of the CIM, WBEM, and SLP to achieve interoperability in a storage network environment. For example, the WBEM provides security, resource lock management, and event notification.
 
@@ -62,6 +62,7 @@ As an open standard, the SMI-S expands general-purpose capabilities of the CIM, 
 
 
 ## Monitoring approach
+<pre>
 During this procedure, you configure the agent to use SMI-S to collect from the Array Management Host that monitors the arrays.
 To configure an agent to monitor the storage device:
 1	On the navigation panel, under Dashboards, click the Administration tab.  
@@ -88,7 +89,7 @@ d	Click Finish.
 10	Click Save.
 11	Select the Agent that you want to activate
 12	Click Activate.
-
+</pre>
 
 ## Reference:
 [1] Quest Foglight™ eDocs https://support.quest.com/Foglight™-for-virtualization-enterprise-edition/
