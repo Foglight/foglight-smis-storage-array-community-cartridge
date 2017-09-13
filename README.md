@@ -3,7 +3,7 @@ This is a generic python agent to collect inventory and performance data from an
 
 Foglight™ for Storage Management provides complete monitoring of virtual storage environments, providing performance and capacity management metrics. It is designed for customers requiring storage monitoring functionality, but not full-fledged virtualization environment monitoring functionality.
 
-What is SMI-S
+## What is SMI-S
 The SMI-S, developed by the SMI organization of the SNIA, is an open standard used to manage storage networks of multiple vendors. The SMI-S defines a set of secure and reliable interfaces that help the storage management system identify, classify, and monitor physical and logical resources in a storage area network (SAN).
 Based on the existing technical standards, the SMI-S covers:
 	Common information model (CIM) - The CIM is developed by a distributed management task force (DMTF) to describe concept models of data. The CIM uses a layered object-oriented system structure to model for managed resources. Devices and components can thus be described in an object-oriented manner.
@@ -13,9 +13,9 @@ Based on the existing technical standards, the SMI-S covers:
 As an open standard, the SMI-S expands general-purpose capabilities of the CIM, WBEM, and SLP to achieve interoperability in a storage network environment. For example, the WBEM provides security, resource lock management, and event notification.
 
 
-What data could be collected
+## What data could be collected
 
-The inventory objects to be collected by the agent is listed as below,
+### The inventory objects to be collected by the agent is listed as below,
 * SanStorageArray
 * SanController
 * SanStorageSupplierPort
@@ -23,7 +23,7 @@ The inventory objects to be collected by the agent is listed as below,
 * SanPhysicalDisk
 * SanLun
 
-The performance metrics to be collected by the agent is listed as below,
+### The performance metrics to be collected by the agent is listed as below,
 * Controller
 	* Highest Data Rate
 	* Most Operations
@@ -61,7 +61,7 @@ The performance metrics to be collected by the agent is listed as below,
 	* Physical State
 
 
-Monitoring approach
+## Monitoring approach
 During this procedure, you configure the agent to use SMI-S to collect from the Array Management Host that monitors the arrays.
 To configure an agent to monitor the storage device:
 1	On the navigation panel, under Dashboards, click the Administration tab.  
@@ -90,7 +90,7 @@ d	Click Finish.
 12	Click Activate.
 
 
-Reference:
+## Reference:
 [1] Quest Foglight™ eDocs https://support.quest.com/Foglight™-for-virtualization-enterprise-edition/
 [2] SNIA, SMI architecture https://www.snia.org/forums/smi/knowledge/smis-getting-started/smi_architecture
 [3] SNIA, SMI Overview https://www.snia.org/sites/default/files/technical_work/SMIS/SMI-Sv1.6.1r6_Overview.book_.pdf
