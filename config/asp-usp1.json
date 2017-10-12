@@ -1,0 +1,6 @@
+{
+  "host"     : "10.6.153.33",
+  "port"     : "5989",
+  "username" : "system",
+  "password" : "manager"
+}

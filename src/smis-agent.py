@@ -49,15 +49,14 @@ def collect_inventory(conn, tracker):
     _start = timer()
 
     arrays = getArrays(conn)
-    debug("arrays:", len(arrays))
+    logger.info("arrays: {0}", len(arrays))
 
     inventories = []
     for ps_array in arrays:
-        debug("array:", ps_array.path)
-        debug("array:", ps_array.tomof())
+        logger.info("array: {0} {1}", ps_array.path, ps_array.tomof())
 
         __namespace = ps_array.path.namespace
-        debug("array.namespace: ", __namespace)
+        logger.info("array.namespace: {0}", __namespace)
 
         # diskDrives = conn.EnumerateInstances("CIM_DiskDrive", __namespace)
         # diskDrives = [d for d in diskDrives if d.get("SystemName") == ps_array.get("Name")]
@@ -65,30 +64,31 @@ def collect_inventory(conn, tracker):
         # for dv in diskDrives:
         #     print("driveView", dv.tomof())
 
+
         isBlockStorageViewsSupported = getBlockStorageViewsSupported(conn)
-        debug("isBlockStorageViewsSupported", isBlockStorageViewsSupported)
+        logger.info("isBlockStorageViewsSupported: {0}", isBlockStorageViewsSupported)
 
         supportedViews = getSupportedViews(conn, ps_array, isBlockStorageViewsSupported)
-        debug("supportedViews", supportedViews)
+        logger.info("supportedViews: {0}", supportedViews)
 
         controllers = getControllers(conn, ps_array)
-        debug("controllers: ", len(controllers))
+        logger.info("controllers: {0}", len(controllers))
 
         fcPorts = getFcPorts(conn, ps_array, controllers)
-        debug("fc ports : ", len(fcPorts))
+        logger.info("fc ports: {0}", len(fcPorts))
 
         iscsiPorts = getIscisiPorts(conn, ps_array, controllers)
-        debug("iscsi ports : ", len(iscsiPorts))
+        logger.info("iscsi ports: {0}", len(iscsiPorts))
 
         pools = getPools(conn, ps_array)
-        debug("pools: ", len(pools))
+        logger.info("pools: {0}", len(pools))
 
         disks = getDisks(conn, ps_array, controllers, supportedViews)
-        debug("disks: ", len(disks))
+        logger.info("disks: {0}", len(disks))
 
         poolVolumeMap = getPoolVolumesMap(conn, ps_array, pools, supportedViews)
         volumes = [y for x in poolVolumeMap.values() for y in x]
-        debug("volumes: ", len(volumes))
+        logger.info("volumes: {0}", len(volumes))
 
         poolDiskMap = getPoolDiskMap(conn, pools, disks)
         for k in poolDiskMap.keys():
@@ -98,8 +98,7 @@ def collect_inventory(conn, tracker):
                     disk.__setitem__("PoolID", k)
 
             poolVolumes = poolVolumeMap.get(k)
-            debug('%s disks: %d, volumes: %d' % (k, len(poolDiskPaths),
-                                                 len(poolVolumes) if poolVolumes else 0))
+            logger.debug('%s disks: %d, volumes: %d' % (k, len(poolDiskPaths), len(poolVolumes) if poolVolumes else 0))
 
         # extents = getExtents(conn, ps_array, controllers)
         # debug("extents: ", len(extents))
@@ -113,21 +112,28 @@ def collect_inventory(conn, tracker):
         # TODO getStorageTiers, memberToTier, volumeToTier, parityGroups
 
         if controllers:
-            print("controller: ", controllers[0].tomof())
+            logger.debug("controller: {0}", controllers[0].tomof())
         if fcPorts:
-            print("fcPorts[0]: ", fcPorts[0].tomof())
+            logger.debug("fcPorts[0]: {0}", fcPorts[0].tomof())
         if iscsiPorts:
-            print("iscisiPorts[0]: ", iscsiPorts[0].tomof())
+            logger.debug("iscisiPorts[0]: {0}", iscsiPorts[0].tomof())
         if pools:
-            print("pools[0]: ", pools[0].tomof())
+            logger.debug("pools[0]: {0}", pools[0].tomof())
         if disks:
-            print("disks: ", disks[0].tomof())
+            logger.debug("disks: {0}", disks[0].tomof())
         if volumes:
-            print("volumes[0]: ", volumes[0].tomof())
+            logger.debug("volumes[0]: {0}", volumes[0].tomof())
+
+        maskingMappingViews = getMaskingMappingViews(conn, ps_array)
+        if None == maskingMappingViews or len(maskingMappingViews) < 1:
+            _itl_start = timer()
+            volumeMappingSPCs = getSCSIProtocolControllers(conn, ps_array)
+            logger.info("Retrieve SCSIProtocolControllers in %d seconds" % round(timer() - _itl_start))
 
         inventories.append({'ps_array': ps_array,
                           'controllers': controllers, 'fcPorts': fcPorts, 'iscsiPorts': iscsiPorts,
-                          'pools': pools, 'disks': disks, 'volumes': volumes, 'poolDiskMap': poolDiskMap})
+                          'pools': pools, 'disks': disks, 'volumes': volumes, 'poolDiskMap': poolDiskMap,
+                            'volumeMappingSPCs': volumeMappingSPCs})
 
     update = None
     try:
@@ -135,17 +141,17 @@ def collect_inventory(conn, tracker):
         model = fsm.storage.SanNasModel(topology_update=update)
 
         for inventory in inventories:
-            submit_inventory(model, inventory)
+            submit_inventory(model, inventory, update)
 
         model.submit(inventory_frequency=inventory_frequency,
                      performance_frequency=performance_frequency)
-        update = None
-    except Exception:
-        # logger.error(traceback.format_exc())
-        print(traceback.format_exc())
-    finally:
+
+    except Exception, e:
+        logger.error(e.message)
         if update:
             update.abort()
+        logger.error(traceback.format_exc())
+    finally:
         tracker.record_inventory()
 
     logger.info("Inventory collection completed and submitted in %d seconds" % round(timer() - _start))
@@ -160,88 +166,88 @@ def collect_performance(conn, tracker):
     performances = []
     for ps_array in arrays:
         __namespace = ps_array.path.namespace
-        print("NAMESPACE: ", __namespace)
+        logger.info("NAMESPACE: {0}", __namespace)
 
         if (not hasStatisticalDataClass(conn, __namespace)):
             continue
 
         statObjectMap = getStatObjectMap(conn, __namespace)
         statAssociations = getStatAssociations(conn, __namespace)
-        debug("len(statDatas)", len(statObjectMap))
-        debug("len(statAssociations)", len(statAssociations))
+        logger.info("len(statDatas): {0}", len(statObjectMap))
+        logger.info("len(statAssociations): {0}", len(statAssociations))
 
         isBlockStorageViewsSupported = getBlockStorageViewsSupported(conn)
-        debug("isBlockStorageViewsSupported", isBlockStorageViewsSupported)
+        logger.info("isBlockStorageViewsSupported: {0}", isBlockStorageViewsSupported)
 
         supportedViews = getSupportedViews(conn, ps_array, isBlockStorageViewsSupported)
-        debug("supportedViews", supportedViews)
+        logger.info("supportedViews: {0}", supportedViews)
 
         controllers = getControllers(conn, ps_array)
-        debug("controllers: ", len(controllers))
+        logger.info("controllers: {0}", len(controllers))
 
         fcPorts = getFcPorts(conn, ps_array, controllers)
-        debug("fc ports : ", len(fcPorts))
+        logger.info("fc ports: {0}", len(fcPorts))
 
         iscsiPorts = getIscisiPorts(conn, ps_array, controllers)
-        debug("iscsi ports : ", len(iscsiPorts))
+        logger.info("iscsi ports: {0}", len(iscsiPorts))
 
         pools = getPools(conn, ps_array)
-        debug("pools: ", len(pools))
+        logger.info("pools: {0}", len(pools))
 
         disks = getDisks(conn, ps_array, controllers, supportedViews)
-        debug("disks: ", len(disks))
+        logger.info("disks: {0}", len(disks))
         if disks:
-            print("disks[0].tomof()", disks[0].tomof())
+            logger.debug("disks[0].tomof(): {0}", disks[0].tomof())
 
         poolVolumeMap = getPoolVolumesMap(conn, ps_array, pools, supportedViews)
         volumes = [y for x in poolVolumeMap.values() for y in x]
-        debug("volumes: ", len(volumes))
+        logger.info("volumes: {0}", len(volumes))
         if volumes:
-            print("volumes[0].tomof()", volumes[0].tomof())
+            logger.debug("volumes[0].tomof(): {0}", volumes[0].tomof())
 
         controllerStats = []
         for c in controllers:
             controllerStat = getControllerStatistics(conn, c, statAssociations, statObjectMap)
             if len(controllerStat) > 0:
                 controllerStats += controllerStat
-        debug("controllerStatistics: ", len(controllerStats))
+        logger.debug("controllerStatistics: {0}", len(controllerStats))
 
         fcPortStats = []
         for p in fcPorts:
             portStat = getPortStatistics(conn, p, statAssociations, statObjectMap)
             if len(portStat) > 0:
                 fcPortStats += portStat
-        debug("fcPortStats: ", len(fcPortStats))
+        logger.debug("fcPortStats: {0}", len(fcPortStats))
 
         iscsiPortStats = []
         for p in iscsiPorts:
             portStat = getPortStatistics(conn, p, statAssociations, statObjectMap)
             if len(portStat) > 0:
                 iscsiPortStats += portStat
-        debug("iscsiPortStats: ", len(iscsiPortStats))
+        logger.info("iscsiPortStats: {0}", len(iscsiPortStats))
 
         volumeStats = []
         for v in volumes:
             volumeStat = getVolumeStatistics(conn, v, statAssociations, statObjectMap)
             if len(volumeStat) > 0:
                 volumeStats += volumeStat
-        debug("volumeStats: ", len(volumeStats))
+        logger.info("volumeStats: {0}", len(volumeStats))
 
         diskStats = []
         for d in disks:
             diskStat = getDiskStatistics(conn, d, statAssociations, statObjectMap)
             if len(diskStat) > 0:
                 diskStats += diskStat
-        debug("diskStats: ", len(diskStats))
+        logger.info("diskStats: {0}", len(diskStats))
 
         if (len(controllerStats) > 0):
-            debug("controllerStatistics: ", controllerStats[0].tomof(), "\n")
+            logger.debug("controllerStatistics: {0}", controllerStats[0].tomof())
         if (len(fcPortStats) > 0):
-            print("fcPortStatistics: ", fcPortStats[0].tomof(), "\n")
+            logger.debug("fcPortStatistics: {0}", fcPortStats[0].tomof())
         if (len(volumeStats) > 0):
-            print("volumeStatistics: ", volumeStats[0].tomof(), "\n")
+            logger.debug("volumeStatistics: {0}", volumeStats[0].tomof())
         if len(diskStats) > 0:
-            print("diskStatistics: %s" % (diskStats[0].tomof()), "\n")
+            logger.debug("diskStatistics: {0}", diskStats[0].tomof())
 
         statsCap = getStatsCapabilities(conn, ps_array)
         clockTickInterval = None
@@ -285,9 +291,12 @@ def execute_request(server_url, creds, namespace):
 
         # Create a connection
         conn = WBEMConnection(server_url, creds, default_namespace=namespace, verify=False, timeout=1200)
-        debug("conn:", conn)
+        logger.info("conn: {0}", conn)
+        detectInteropNamespace(conn)
 
         tracker = foglight.model.CollectionTracker(inventory_frequency.seconds / 60)
+        # collect_inventory(conn, tracker)
+
         if tracker.is_inventory_recommended():
             logger.info("Inventory collection required")
             collect_inventory(conn, tracker)

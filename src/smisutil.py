@@ -4,11 +4,13 @@ from __future__ import print_function
 
 import string
 import traceback
+import foglight.logging
 
 from pywbemReq.cim_obj import CIMInstanceName, CIMInstance
 from pywbemReq.cim_operations import is_subclass
 from pywbemReq.cim_types import *
 
+logger = foglight.logging.get_logger("smis-agent")
 
 def getRegisteredProfiles(conn):
     kProfilePropList = ["InstanceID", "RegisteredVersion", "RegisteredName"]
@@ -19,7 +21,7 @@ def getElementsForProfile(conn, profileName):
     profiles = getRegisteredProfiles(conn)
     profiles = [p for p in profiles if p.get("RegisteredName") == profileName]
     profiles = profiles[:1]
-    print('profiles:', len(profiles))
+    logger.info('profiles: %d' % len(profiles))
 
     elements = []
     for p in profiles:
@@ -35,7 +37,7 @@ def getElementsForProfile(conn, profileName):
 
 def getArray(conn):
     managedElements = getElementsForProfile(conn, "Array")
-    print("managedElements: ", len(managedElements))
+    logger.info("managedElements: %d" % len(managedElements))
     ps_array = managedElements[0]
     getProductInfo(conn, ps_array)
     return ps_array
@@ -43,22 +45,22 @@ def getArray(conn):
 
 def getArrays(conn):
     managedElements = getElementsForProfile(conn, "Array")
-    print('managedElements:', len(managedElements))
+    logger.info('managedElements: %d' % len(managedElements))
 
     arrays = []
     _operationalStatusValues = None
     for m in managedElements:
         if not is_subclass(conn, m.path.namespace, "CIM_ComputerSystem", m.classname):
-            print('Array skipped because it is not a CIM_ComputerSystem')
+            logger.info('Array skipped because it is not a CIM_ComputerSystem')
             continue
 
-        print('Dedicated:', m.get('Dedicated'))
+        logger.info('Dedicated: %s' % m.get('Dedicated'))
         if not {15}.issubset(m.get('Dedicated')):
-            print('Array skipped because it is not a block storage system')
+            logger.info('Array skipped because it is not a block storage system')
             continue
 
         if not getProductInfo(conn, m):
-            print('Array skipped because no vendor and/or model information found')
+            logger.info('Array skipped because no vendor and/or model information found')
             continue
 
         if _operationalStatusValues == None:
@@ -205,14 +207,14 @@ def getFcPorts(conn, ps_array, controllers):
                                     ResultRole="PartComponent")
 
             if (None == ports or  len(ports) <= 0):
-                print("No FC ports found for %s using %s" % (ct.get("ElementName"),  conn) )
+                logger.warn("No FC ports found for %s using %s" % (ct.get("ElementName"),  conn) )
                 controllers.remove(ct)
             else:
                 for p in ports:
                     p.__setitem__("ControllerName", ct.get("ElementName"))
                 fcPorts += ports
         except Exception as err:
-            print("getFcPorts Error: ", err)
+            logger.error("getFcPorts Error: %s" % err.message)
 
     if len(fcPorts) <= 0 and len(controllers) > 0:
         fcPorts = conn.Associators(ps_array.path,
@@ -260,7 +262,7 @@ def getIscisiPorts(conn, ps_array, controllers):
                     p.__setitem__("ControllerName", ct.get("ElementName"))
                 iscisiPorts += ports
     except Exception as err:
-        print("getIscisiPorts Error: ", err)
+        logger.error("getIscisiPorts Error: %s" % err.message)
 
     if (len(iscisiPorts) <= 0):
         iscisiPorts = conn.Associators(ps_array.path,
@@ -369,7 +371,7 @@ def __getDiskDrives(conn, ps_array, controllers):
                                     ResultClass="CIM_DiskDrive")
                 disks += diskComps
     except:
-        print(traceback.format_exc())
+        logger.error(traceback.format_exc())
     return disks
 
 
@@ -442,7 +444,7 @@ def __getVolumesFromVolumeViews(conn, ps_array):
                                 AssocClass="SNIA_SystemDeviceView",
                                 ResultClass="SNIA_VolumeView")
     except Exception as e:
-        print(e)
+        logger.error(e)
 
     for view in volumeViews:
         # pull the keys specific to the storage volume from the view of the volume
@@ -476,7 +478,7 @@ def __getVolumesFromPools(conn, pools):
                             AssocClass="CIM_AllocatedFromStoragePool",
                             ResultClass="CIM_StorageVolume")
         except Exception as e:
-            print(e)
+            logger.error(traceback.format_exc())
 
         poolID = p.get("InstanceID")
         volumes = poolVolumeMap.get(poolID);
@@ -557,7 +559,7 @@ def getMaskingMappingViews(conn, array):
                                      AssocClass="CIM_HostedService",
                                      ResultClass="CIM_StorageHardwareIDManagementService")
         if None == hardwareIDMgmtServices or 0 >= len(hardwareIDMgmtServices):
-            print("No hardware ID management service for storage array {0}", array.getItem("ElementName"))
+            logger.info("No hardware ID management service for storage array {0}", array.getItem("ElementName"))
             return False
 
 
@@ -565,7 +567,7 @@ def getMaskingMappingViews(conn, array):
                                      AssocClass="CIM_ConcreteDependency",
                                      ResultClass="CIM_StorageHardwareID")
         if None == storageHarwareIDs or 0 >= len(storageHarwareIDs):
-            print("No hardware IDs found for storage array {0}", array.getItem("ElementName"))
+            logger.info("No hardware IDs found for storage array {0}", array.getItem("ElementName"))
             return False
 
         for hardwareID in storageHarwareIDs:
@@ -582,11 +584,35 @@ def getMaskingMappingViews(conn, array):
                 volumeMappingViews.append(view)
 
     except Exception, e:
-        print(e)
+        logger.error("Failed to get MaskingMappingViews: {0}", e.message)
     return mVolumeMappingMaskingLookup
 
 
 def getSCSIProtocolControllers(conn, array):
+    kSCSIProtocolControllerPropList = [
+        "SystemCreationClassName",
+        "SystemName",
+        "CreationClassName",
+        "DeviceID",
+        "Name",
+        "NameFormat",
+        "ElementName"
+    ]
+    kProtocolControllerForUnitPropList = [
+        "CreationClassName",
+        "DeviceID",
+        "SystemCreationClassName",
+        "SystemName",
+        "DeviceNumber"
+    ]
+    kNetworkPortPropList = [
+        "SystemCreationClassName",
+        "SystemName",
+        "CreationClassName",
+        "DeviceID",
+        "PermanentAddress"
+    ]
+
     mSCSIProtocolControllers = {}
     mStorageHardwareIDLookup = None
     mAuthorizedSubjectLookup = None
@@ -597,6 +623,7 @@ def getSCSIProtocolControllers(conn, array):
                                     AssocClass="CIM_ElementCapabilities",
                                     ResultClass="CIM_ProtocolControllerMaskingCapabilities")
         SPCs = None
+
         configSvc = conn.AssociatorNames(array.path,
                                     AssocClass="CIM_HostedService",
                                     ResultClass="CIM_ControllerConfigurationService")
@@ -605,19 +632,21 @@ def getSCSIProtocolControllers(conn, array):
             # Get only SCSIProtocolControllers for this system
             SPCs = conn.Associators(configSvc[0],
                                     AssocClass="CIM_ConcreteDependency",
-                                    ResultClass="CIM_SCSIProtocolController")
+                                    ResultClass="CIM_SCSIProtocolController",
+                                    PropertyList=kSCSIProtocolControllerPropList)
         if None == SPCs:
             # some use this association (conformant?)
             SPCs = conn.Associators(array.path,
                                     AssocClass="CIM_SystemDevice",
-                                    ResultClass="CIM_SCSIProtocolController")
+                                    ResultClass="CIM_SCSIProtocolController",
+                                    PropertyList=kSCSIProtocolControllerPropList)
 
         if None == SPCs:
             # Desperate measures...Get all SCSIProtocolControllers found on the CIMOM
-            SPCs = conn.EnumerateInstances("CIM_SCSIProtocolController")
+            SPCs = conn.EnumerateInstances("CIM_SCSIProtocolController", PropertyList=kSCSIProtocolControllerPropList)
 
         if None == SPCs or 0 >= len(SPCs):
-            print("No SCSIProtocolControllers found for Storage Array \"{0}\"", array["ElementName"])
+            logger.info("No SCSIProtocolControllers found for Storage Array \"{0}\"", array["ElementName"])
             return
 
         # Cache the storage hardware ID and authorized subject instances
@@ -648,46 +677,45 @@ def getSCSIProtocolControllers(conn, array):
                                     ResultClass="CIM_AuthorizedPrivilege")
             if None != authPrivileges and 0 < len(authPrivileges):
                 for ap in authPrivileges:
-                    # print("ap", ap)
                     storHardwareIDs = getAssociatedEntities(ap, mAuthorizedSubjectLookup, mStorageHardwareIDLookup)
-                    spc.__setitem__("storHardwareIDs", storHardwareIDs)
-                    # print("storHardwareIDs", storHardwareIDs)
+                    # initiators
+                    hardwareIDs = spc.get("storHardwareIDs", [])
+                    hardwareIDs += storHardwareIDs
+                    spc.__setitem__("storHardwareIDs", hardwareIDs)
 
             # The CIM_ProtocolControllerForUnit associates a Volume to this SPC. It contains a property,
             # "DeviceNumber", that is the LUN of this association of a Volume to a Port.
             pcfuLookup = {}
-            kProtocolControllerForUnitPropList = {
-                "CreationClassName",
-                "DeviceID",
-                "SystemCreationClassName",
-                "SystemName",
-                "DeviceNumber"
-            };
             pcfus = conn.References(spc.path,
                                         ResultClass="CIM_ProtocolControllerForUnit",
                                         Role="Antecedent",
-                                        includeClassOrigin=False)
+                                        includeClassOrigin=False,
+                                        PropertyList=kProtocolControllerForUnitPropList)
+
             for pcfu in pcfus:
-                pcPath = pcfu.get("Antecedent")
-                volumePath = pcfu.get("Dependent")
+                pcPath = pcfu.path.get("Antecedent")
+                volumePath = pcfu.path.get("Dependent")
                 key = pcPath.__str__() + volumePath.__str__()
 
-                # print(pcfu.tomof())
                 if not pcfuLookup.__contains__(key):
                     pcfuLookup[key] = pcfu
-                    # spc.__setitem__("pcfu", pcfu)
+                    pcfus = spc.get("pcfus", [])
+                    pcfus.append(pcfu)
+                    spc.__setitem__("pcfus", pcfus)
 
                     spcList = mSCSIProtocolControllers.get(volumePath.__str__())
                     if None == spcList:
                         spcList = []
                         mSCSIProtocolControllers[volumePath.__str__()] = spcList
+
                     spcList.append(spc)
+
 
             nameFormat = spc.get("NameFormat")
             spcName = spc.get("Name")
             isISCSI = "iSCSI Name" == nameFormat or (None != spcName and spcName.__contains__("iqn"))
-            print("isISCSI", isISCSI, nameFormat, spcName)
-            print(spc.tomof())
+            # print("isISCSI", isISCSI, nameFormat, spcName)
+            # print(spc.tomof())
 
             # Add FCPorts associated with the SCSIProtocolController
             # FCPort is associated to a SCSIProtocolController through
@@ -697,18 +725,27 @@ def getSCSIProtocolControllers(conn, array):
                                         ResultClass="CIM_SCSIProtocolEndpoint")
             for spe in SPEs:
                 speName= spe.get("Name")
-                if isISCSI or (None != speName and speName.contains("iqn")):
+                # print("speName: ", speName, spe.path)
+                if spe.get("CreationClassName").startswith("HPEVA_"):
+                    spe.path.__delitem__("SystemName")   #remove unused condition
+
+                if isISCSI or (None != speName and speName.__contains__("iqn")):
                     spe.__setitem__("PermanentAddress", speName)
                     spc.__setitem__("spe", spe)
                 else:
                     ports = conn.Associators(spe.path,
                                         AssocClass="CIM_DeviceSAPImplementation",
-                                        ResultClass="CIM_NetworkPort")
-                    if None == ports and len(ports) > 0:
-                        spc.__setitem__("ports", ports)
+                                        ResultClass="CIM_NetworkPort",
+                                        PropertyList=kNetworkPortPropList)
+                    if None != ports and len(ports) > 0:
+                        spc_ports = spc.get("ports", [])
+                        spc_ports += ports
+                        spc.__setitem__("ports", spc_ports)
+                # print(speName, spe.tomof())
+
 
     except Exception, e:
-        print(e)
+        logger.error('Failed to get SCSIProtocolControllers: {0}', traceback.format_exc())
     return mSCSIProtocolControllers
 
 
@@ -819,7 +856,7 @@ def getStorageStatisticsData(conn, path):
         stat = conn.Associators(path, AssocClass="CIM_ElementStatisticalData",
                                   ResultClass="CIM_BlockStorageStatisticalData")
     except Exception, e:
-        print("getStorageStatisticsData Error: ", e)
+        logger.error("getStorageStatisticsData Error: {0}", traceback.format_exc())
     return stat
 
 
@@ -885,7 +922,7 @@ def getStatsCapabilities(conn, array):
                                         ResultClass="CIM_StorageConfigurationService")
 
     if None == statsService or len(statsService) < 1:
-        print('No Storage Statistics Service found')
+        logger.info('No Storage Statistics Service found')
         return None
 
 
@@ -894,8 +931,21 @@ def getStatsCapabilities(conn, array):
                                         ResultClass="CIM_BlockStatisticsCapabilities")
 
     if None == statsCaps or len(statsCaps) < 1:
-        print('No Storage Statistics Capabilities found')
+        logger.info('No Storage Statistics Capabilities found')
         return None
 
-    print('statsCaps', statsCaps[0].tomof())
+    logger.info('statsCaps', statsCaps[0].tomof())
     return statsCaps[0]
+
+def detectInteropNamespace(conn):
+    namespaces = ("interop", "root/interop", "root/pg_interop", "root/cimv2", "root/ibm", "root/eternus", "root")
+    for np in namespaces:
+        conn.default_namespace = np
+        try:
+            profiles = conn.EnumerateInstances("CIM_RegisteredProfile")
+            if None != profiles and len(profiles) > 0:
+                break
+        except Exception, e:
+            logger.error("trying namespace {0} found exception {1}", np, traceback.format_exc())
+
+    logger.info("found the interop namespace, current namespace is {0}", conn.default_namespace)

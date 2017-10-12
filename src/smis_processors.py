@@ -11,6 +11,7 @@ import foglight.logging
 import foglight.model
 import foglight.utils
 import fsm.storage
+from java.util import ArrayList
 
 from smisutil import *
 
@@ -65,7 +66,7 @@ def processFcPorts(array, cim_fcPorts):
             controller = array.get_controller(controllerName.upper())
             port.associate_with(controller)
         except Exception,e:
-            print(traceback.format_exc())
+            logger.error("Failed to process FC ports {0}", traceback.format_exc())
     return None
 
 
@@ -95,47 +96,55 @@ def processPools(array, cim_pools):
 
 
 def processVolumes(array, cim_volumes, poolsMap):
+    logger.info("processVolumes start")
     for v in cim_volumes:
-        # print(v.tomof())
+        try:
+            print(v.tomof())
 
-        lun = array.get_lun(v["DeviceID"])
+            lun = array.get_lun(v["DeviceID"])
 
-        lun.set_label("Lun")   # so the UI knows to call these "Volumes"
-        lun.set_property("name", v["ElementName"])
+            lun.set_label("Lun")   # so the UI knows to call these "Volumes"
+            _name = v["ElementName"]
+            if v.has_key("Caption") and v["Caption"] != None:
+                _name = v["Caption"]
+            lun.set_property("name", _name)
 
-        pool = poolsMap[v["PoolID"]]
-        lun.associate_with(pool)
+            pool = poolsMap[v["PoolID"]]
+            lun.associate_with(pool)
 
-        isThinProvisioned = False
-        if (v.has_key("ThinlyProvisioned")):
-            isThinProvisioned = bool(v["ThinlyProvisioned"])
-            lun.set_property("isThinProvisioned", isThinProvisioned)
+            isThinProvisioned = False
+            if (v.has_key("ThinlyProvisioned")):
+                isThinProvisioned = bool(v["ThinlyProvisioned"])
+                lun.set_property("isThinProvisioned", isThinProvisioned)
 
-        blockSize = v["BlockSize"]
-        consumableBlocks = v["ConsumableBlocks"]
-        numberOfBlocks = v["NumberOfBlocks"]
-        logicalBytes = 0
-        if consumableBlocks == 0:
-            logicalBytes = numberOfBlocks * blockSize
-        else:
-            logicalBytes = consumableBlocks * blockSize
-        size = long(logicalBytes / 1024 / 1024)
-        lun.set_property("size", size)
-        lun.set_property("advertisedSize", size)
-        # lun.set_property("rawCapacity", size)
-        # lun.set_property("allocatedSize", size)
+            blockSize = 0 if not v.has_key("BlockSize") else v["BlockSize"]
+            consumableBlocks = v["ConsumableBlocks"]
+            numberOfBlocks = v["NumberOfBlocks"]
+            logicalBytes = 0
+            if consumableBlocks == 0:
+                logicalBytes = numberOfBlocks * blockSize
+            else:
+                logicalBytes = consumableBlocks * blockSize
+            size = long(logicalBytes / 1024 / 1024)
+            lun.set_property("size", size)
+            lun.set_property("advertisedSize", size)
+            # lun.set_property("rawCapacity", size)
+            # lun.set_property("allocatedSize", size)
 
-        if isThinProvisioned:
-            consumedBytes = 0
-            if v.has_key("ConsumedBytes"):
-                consumedBytes = v["ConsumedBytes"]
-            if consumedBytes > logicalBytes:
-                logger.warn("Thin SALD over-consumed %s : %d > %d" % (v["ElementName"], consumedBytes, logicalBytes))
-            if 0 <= consumedBytes:
-                lun.set_property("advertisedSize", long(consumedBytes / 1024 / 1024))
+            if isThinProvisioned:
+                consumedBytes = 0
+                if v.has_key("ConsumedBytes"):
+                    consumedBytes = v["ConsumedBytes"]
+                if consumedBytes > logicalBytes:
+                    logger.warn("Thin SALD over-consumed {0} : {1} > {2}", v["ElementName"], consumedBytes, logicalBytes)
+                if 0 <= consumedBytes:
+                    lun.set_property("advertisedSize", long(consumedBytes / 1024 / 1024))
 
-        # RawCapacity
-        # setProtection
+            # RawCapacity
+            # setProtection
+        except Exception, e:
+            logger.error(e.message)
+    logger.info("processVolumes end")
     return None
 
 
@@ -184,7 +193,116 @@ def processDisks(array, cim_disks, poolsMap):
 
     return None
 
-def submit_inventory(sanNasModel, inventory):
+class SanCorrelationPath():
+    def __init__(self, devicePath, targetPort, lun):
+        self.devicePath = devicePath
+        self.targetPort = targetPort
+        self.lun = lun
+
+
+def processITLs(array, cim_volumeMappingSPCs, update):
+    itl0s = {}
+    itl1s = {}
+    if None == cim_volumeMappingSPCs:
+        return
+    # print("len(volumePath):", len(cim_volumeMappingSPCs.keys()))
+    for volumePath in cim_volumeMappingSPCs.keys():
+        # print(volumePath)
+        spcs = cim_volumeMappingSPCs[volumePath]
+        for spc in spcs:
+            storHardwareIDs = spc.get("storHardwareIDs")
+            ports = spc.get("ports")
+            pcfus = spc.get("pcfus")
+
+            # print(ports[0].tomof())
+            # print(pcfus[0].tomof())
+
+            for pcfu in pcfus:
+                deviceNumber = pcfu.get("DeviceNumber")
+                volumePath = pcfu.path.get("Dependent")
+                lunId = volumePath.get("DeviceID")
+
+                if None == ports:
+                    continue
+                for port in ports:
+                    portwwn = port.get("PermanentAddress").lower()
+                    portType = 'FC' if port.get("CreationClassName").lower().endswith("fcport") else "ISCSI"
+
+                    if not itl0s.__contains__(portwwn):
+                        itl0 = {
+                            'lun': lunId,
+                            'devicePath': portwwn,
+                        }
+                        itl0s[portwwn] = itl0
+
+                    if None == storHardwareIDs:
+                        continue
+                    for hardwareId in storHardwareIDs:
+                        storageId = hardwareId.get("StorageID").lower()
+                        devicePath = "%s\t%s:%s" % (storageId, portwwn, deviceNumber)
+
+                        if not itl1s.__contains__(devicePath):
+                            itl1 = {
+                                'lun': lunId,
+                                'targetPort': portwwn,
+                                'targetPortType': portType,
+                                'devicePath': devicePath
+                            }
+                            itl1s[devicePath] = itl1
+
+
+    itl1s = sorted(itl1s.values(), key=lambda d : d['devicePath'])
+    logger.info('itl1s:%d' % len(itl1s))
+
+    itl1paths = ArrayList()
+    itl0paths = ArrayList()
+    for itl1 in itl1s:
+        # print(itl1)
+        lunKey = foglight.topology.make_object_key("SanLun", {
+            "deviceID": itl1['lun'],
+            "storageSupplier": array._key()
+        })
+
+        portType = itl1['targetPortType'].upper()
+        if portType == "FC":
+            targetPortType = "SanStorageSupplierPortFC"
+        elif portType == "ISCSI":
+            targetPortType = "SanStorageSupplierPortISCSI"
+        targetPortKey = foglight.topology.make_object_key(targetPortType, {
+            "wwn": itl1['targetPort']
+        })
+
+        itl1path = update.create_data_object("SanCorrelationPath", {
+            'devicePath': itl1['devicePath'],
+            'lun': lunKey,
+            'targetPort': targetPortKey
+        })
+        itl1paths.add(itl1path._delegate)
+
+    logger.info('itl0s:%d' % len(itl0s))
+    for itl0 in itl0s.values():
+        # print(itl0)
+
+        lunKey = foglight.topology.make_object_key("SanLun", {
+            "deviceID": itl0['lun'],
+            "storageSupplier": array._key()
+        })
+
+        itl0path = update.create_data_object("SanCorrelationPath", {
+            'devicePath': itl0['devicePath'],
+            'lun': lunKey
+        })
+        itl0paths.add(itl0path._delegate)
+
+    _array = update.get_object(array._key())
+    _array.set_observation_value("ITLs1", itl1paths)
+    _array.set_observation_value("ITLs0", itl0paths)
+
+    return None
+
+
+def submit_inventory(sanNasModel, inventory, update):
+    logger.info("submit_inventory start")
     cim_array = inventory['ps_array']
     cim_controllers = inventory['controllers']
     cim_fcPorts = inventory['fcPorts']
@@ -201,6 +319,11 @@ def submit_inventory(sanNasModel, inventory):
     processVolumes(array, cim_volumes, poolsMap)
     processDisks(array, cim_disks, poolsMap)
 
+    volume_mapping_spcs_path = "{0}/volume_mapping_spcs_{1}.txt".format(foglight.get_agent_specific_directory(),
+                                                                        cim_array["SerialID"])
+    pickle_dump(volume_mapping_spcs_path, inventory['volumeMappingSPCs'])
+
+    logger.info("submit_inventory end")
     return None
 
 
@@ -247,7 +370,7 @@ def processControllerStats(array, controllerStats, lastStats, _tracker):
 
             # busyTicks = long(cStat.get("IOTimeCounter"))
         except Exception,e:
-            print(traceback.format_exc())
+            logger.error(traceback.format_exc())
     return None
 
 
@@ -300,7 +423,7 @@ def processFcPortStats(array, fcPortStats, lastStats, _tracker, update):
                             __getStatValue('TotalIOs', pStat, lastStat, durationInt))
 
         except Exception,e:
-            print(traceback.format_exc())
+            logger.error(traceback.format_exc())
     return None
 
 
@@ -353,7 +476,7 @@ def processIscsiPortStats(array, iscsiPortStats, lastStats, _tracker):
                             __getStatValue('TotalIOs', pStat, lastStat, durationInt))
 
         except Exception,e:
-            print(traceback.format_exc())
+            logger.error(traceback.format_exc())
     return None
 
 
@@ -451,7 +574,7 @@ def processVolumeStats(array, volumeStats, lastStats, _tracker, clockTickInterva
 
             # print("-------------------------size: ", size)
         except Exception,e:
-            print(traceback.format_exc())
+            logger.error(traceback.format_exc())
     return None
 
 
@@ -514,7 +637,7 @@ def processDiskStats(array, diskStats, lastStats, _tracker, clockTickInterval):
                     disk.set_metric("busy", busyPercent)
 
         except Exception, e:
-            print(traceback.format_exc())
+            logger.error(traceback.format_exc())
     return None
 
 
@@ -524,6 +647,9 @@ def submit_performance(model, performance, _tracker, update):
     last_stats_path = "{0}/raw_stats_{1}.txt".format(foglight.get_agent_specific_directory(), ps_array["SerialID"])
     last_stats = pickle_load(last_stats_path)
 
+    logger.info("getArray {0} {1}", ps_array.get("SerialID"), ps_array.get("Vendor"))
+    array = model.get_storage_array(ps_array.get("SerialID"), ps_array.get("Vendor"))
+
     if last_stats:
         controllerStats = performance['controllerStats']
         fcPortStats = performance['fcPortStats']
@@ -532,20 +658,18 @@ def submit_performance(model, performance, _tracker, update):
         diskStats = performance['diskStats']
         clockTickInterval = performance['clockTickInterval']
 
-        print("getArray", ps_array.get("SerialID"), ps_array.get("Vendor"))
-        array = model.get_storage_array(
-            ps_array.get("SerialID"), ps_array.get("Vendor"))
-
         processControllerStats(array, controllerStats, last_stats['controllerStats'], _tracker)
         processFcPortStats(array, fcPortStats,         last_stats['fcPortStats'],     _tracker, update)
         processIscsiPortStats(array, iscsiPortStats,   last_stats['iscsiPortStats'],  _tracker)
         processVolumeStats(array, volumeStats,         last_stats['volumeStats'],     _tracker, clockTickInterval)
         processDiskStats(array, diskStats,             last_stats['diskStats'],       _tracker, clockTickInterval)
 
+    volume_mapping_spcs_path = "{0}/volume_mapping_spcs_{1}.txt".format(foglight.get_agent_specific_directory(), ps_array["SerialID"])
+    volumeMappingSPCs = pickle_load(volume_mapping_spcs_path)
+    processITLs(array, volumeMappingSPCs, update)
 
-    f = open(last_stats_path, 'wb')
-    pickle.dump(performance, f)
-    f.close()
+    pickle_dump(last_stats_path, performance)
+
     # print("controllerStats", controllerStats)
     return None
 
@@ -560,6 +684,11 @@ def pickle_load(filename):
     finally:
         if f:
             f.close()
+
+def pickle_dump(filename, obj):
+    f = open(filename, 'wb')
+    pickle.dump(obj, f)
+    f.close()
 
 
 class PerfStates(object):
