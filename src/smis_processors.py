@@ -218,7 +218,7 @@ def processITLs(array, cim_volumeMappingSPCs, update):
             # print(pcfus[0].tomof())
 
             for pcfu in pcfus:
-                deviceNumber = pcfu.get("DeviceNumber")
+                deviceNumber = long(pcfu.get("DeviceNumber"), 16)
                 volumePath = pcfu.path.get("Dependent")
                 lunId = volumePath.get("DeviceID")
 
