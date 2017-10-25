@@ -3,7 +3,7 @@
 REM You can customize this script to run out agent using the script harness
 
 set START=%cd%
-set SDKDIR=D:\sdk\StorageSDK
+set SDKDIR=C:\sinba\FVE\sdk\StorageSDK
 set SDKLIBDIR=%SDKDIR%\lib
 set HARNESS=%SDKDIR%\python-sdk\bin\script-harness.bat
 cd ..

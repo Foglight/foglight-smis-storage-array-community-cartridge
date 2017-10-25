@@ -65,7 +65,7 @@ def getArrays(conn):
 
         if _operationalStatusValues == None:
             _operationalStatusValues = getOperationalStatusValues(conn, m, m.classname)
-        status = convertOperationalStatusValues(['OperationalStatus'], _operationalStatusValues)
+        status = convertOperationalStatusValues(m['OperationalStatus'], _operationalStatusValues)
         m.__setitem__("OperationalStatus", status)
 
         arrays.append(m)
@@ -140,7 +140,10 @@ def getOperationalStatusValues(conn, ps_array, className):
                         IncludeClassOrigin=True,
                         PropertyList=['OperationalStatus'])
     ops = cls.properties.get("OperationalStatus")
-    return ops.qualifiers['Values'].value
+    if ops.qualifiers.has_key('Values'):
+        return ops.qualifiers['Values'].value
+    else:
+        return []
 
 
 def convertOperationalStatusValues(operationalStatus, operationalStatusValues):
