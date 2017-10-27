@@ -21,6 +21,7 @@ import fsm.storage
 from smisutil import *
 from smis_processors import *
 
+from java.util.concurrent import TimeUnit
 
 # Set up a logger for this Agent.
 logger = foglight.logging.get_logger("smis-agent")
@@ -246,8 +247,12 @@ def collect_performance(conn, tracker):
             logger.debug("fcPortStatistics: {0}", fcPortStats[0].tomof())
         if (len(volumeStats) > 0):
             logger.debug("volumeStatistics: {0}", volumeStats[0].tomof())
+            for vs in volumeStats:
+                logger.debug("volumeStat: {0}", vs.tomof())
         if len(diskStats) > 0:
             logger.debug("diskStatistics: {0}", diskStats[0].tomof())
+            for ds in diskStats:
+                logger.debug("diskStat: {0}", ds.tomof())
 
         statsCap = getStatsCapabilities(conn, ps_array)
         clockTickInterval = None
@@ -336,13 +341,39 @@ def debug(*args):
     return None
 
 
+def queryCredential(host_url, timeoutSec):
+    credQueryBuilder = foglight.services['CredentialQueryBuilderService2']
+    credService = foglight.services['CleartextCredentialService3']
+
+    query = credQueryBuilder.createQuery("StorageMonitoring")
+    if None == query:
+        return None
+    query.addProperty("storage.collextarget", host_url)
+
+    queryResult = credService.queryCredentials(query).getResult(1, TimeUnit.MINUTES)
+    creds = None if None == queryResult else queryResult.getCredentials()
+
+    return creds
+
+
 def main():
     """ Get arguments and call the execution function"""
 
     asp = foglight.asp.get_properties()
     server_url = getServerUrl(asp["host"], asp["port"])
     # create the credentials tuple for WBEMConnection
-    creds = (asp["username"], asp["password"])
+
+    creds = None
+    credList = queryCredential(asp["host"], 60)
+    if credList != None and len(credList) > 0:
+        for cred in credList:
+            if cred.__class__.__name__.endswith("LoginPasswordCredential"):
+                creds = (cred.getUsername(), cred.getPassword())
+                logger.info("found credential for {0}", asp["host"])
+                break
+
+    if creds == None:
+        creds = (asp["username"], asp["password"])
 
     # call the method to execute the request and display results
     execute_request(server_url, creds, TEST_NAMESPACE)
