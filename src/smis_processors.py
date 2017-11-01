@@ -99,7 +99,7 @@ def processVolumes(array, cim_volumes, poolsMap):
     logger.info("processVolumes start")
     for v in cim_volumes:
         try:
-            print(v.tomof())
+            # print(v.tomof())
 
             lun = array.get_lun(v["DeviceID"])
 
@@ -200,7 +200,7 @@ class SanCorrelationPath():
         self.lun = lun
 
 
-def processITLs(array, cim_volumeMappingSPCs, update):
+def processITLs(array, cim_volumeMappingSPCs):
     itl0s = {}
     itl1s = {}
     if None == cim_volumeMappingSPCs:
@@ -252,56 +252,28 @@ def processITLs(array, cim_volumeMappingSPCs, update):
 
 
     itl1s = sorted(itl1s.values(), key=lambda d : d['devicePath'])
+
     logger.info('itl1s:%d' % len(itl1s))
+    logger.info('itl0s:%d' % len(itl0s))
 
     itl1paths = ArrayList()
     itl0paths = ArrayList()
     for itl1 in itl1s:
-        # print(itl1)
-        lunKey = foglight.topology.make_object_key("SanLun", {
-            "deviceID": itl1['lun'],
-            "storageSupplier": array._key()
-        })
+        itl1path = array.create_ITL1(itl1['devicePath'], itl1['lun'], itl1['targetPort'], itl1['targetPortType'])
+        itl1paths.add(itl1path)
 
-        portType = itl1['targetPortType'].upper()
-        if portType == "FC":
-            targetPortType = "SanStorageSupplierPortFC"
-        elif portType == "ISCSI":
-            targetPortType = "SanStorageSupplierPortISCSI"
-        targetPortKey = foglight.topology.make_object_key(targetPortType, {
-            "wwn": itl1['targetPort']
-        })
 
-        itl1path = update.create_data_object("SanCorrelationPath", {
-            'devicePath': itl1['devicePath'],
-            'lun': lunKey,
-            'targetPort': targetPortKey
-        })
-        itl1paths.add(itl1path._delegate)
-
-    logger.info('itl0s:%d' % len(itl0s))
     for itl0 in itl0s.values():
-        # print(itl0)
+        itl0path = array.create_ITL0(itl1['devicePath'], itl1['lun'])
+        itl0paths.add(itl0path)
 
-        lunKey = foglight.topology.make_object_key("SanLun", {
-            "deviceID": itl0['lun'],
-            "storageSupplier": array._key()
-        })
-
-        itl0path = update.create_data_object("SanCorrelationPath", {
-            'devicePath': itl0['devicePath'],
-            'lun': lunKey
-        })
-        itl0paths.add(itl0path._delegate)
-
-    _array = update.get_object(array._key())
-    _array.set_observation_value("ITLs1", itl1paths)
-    _array.set_observation_value("ITLs0", itl0paths)
+    array.set_ITLs0(itl0paths)
+    array.set_ITLs1(itl1paths)
 
     return None
 
 
-def submit_inventory(sanNasModel, inventory, update):
+def submit_inventory(sanNasModel, inventory):
     logger.info("submit_inventory start")
     cim_array = inventory['ps_array']
     cim_controllers = inventory['controllers']
@@ -374,7 +346,7 @@ def processControllerStats(array, controllerStats, lastStats, _tracker):
     return None
 
 
-def processFcPortStats(array, fcPortStats, lastStats, _tracker, update):
+def processFcPortStats(array, fcPortStats, lastStats, _tracker):
     lastStatMap = {s['statID']: s for s in lastStats}
 
     for pStat in fcPortStats:
@@ -641,7 +613,7 @@ def processDiskStats(array, diskStats, lastStats, _tracker, clockTickInterval):
     return None
 
 
-def submit_performance(model, performance, _tracker, update):
+def submit_performance(model, performance, _tracker):
     ps_array = performance['ps_array']
 
     last_stats_path = "{0}/raw_stats_{1}.txt".format(foglight.get_agent_specific_directory(), ps_array["SerialID"])
@@ -659,14 +631,14 @@ def submit_performance(model, performance, _tracker, update):
         clockTickInterval = performance['clockTickInterval']
 
         processControllerStats(array, controllerStats, last_stats['controllerStats'], _tracker)
-        processFcPortStats(array, fcPortStats,         last_stats['fcPortStats'],     _tracker, update)
+        processFcPortStats(array, fcPortStats,         last_stats['fcPortStats'],     _tracker)
         processIscsiPortStats(array, iscsiPortStats,   last_stats['iscsiPortStats'],  _tracker)
         processVolumeStats(array, volumeStats,         last_stats['volumeStats'],     _tracker, clockTickInterval)
         processDiskStats(array, diskStats,             last_stats['diskStats'],       _tracker, clockTickInterval)
 
     volume_mapping_spcs_path = "{0}/volume_mapping_spcs_{1}.txt".format(foglight.get_agent_specific_directory(), ps_array["SerialID"])
     volumeMappingSPCs = pickle_load(volume_mapping_spcs_path)
-    processITLs(array, volumeMappingSPCs, update)
+    processITLs(array, volumeMappingSPCs)
 
     pickle_dump(last_stats_path, performance)
 

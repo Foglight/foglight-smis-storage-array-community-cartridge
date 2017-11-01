@@ -142,7 +142,7 @@ def collect_inventory(conn, tracker):
         model = fsm.storage.SanNasModel(topology_update=update)
 
         for inventory in inventories:
-            submit_inventory(model, inventory, update)
+            submit_inventory(model, inventory)
 
         model.submit(inventory_frequency=inventory_frequency,
                      performance_frequency=performance_frequency)
@@ -171,6 +171,10 @@ def collect_performance(conn, tracker):
 
         if (not hasStatisticalDataClass(conn, __namespace)):
             continue
+
+        # clns = getClassNames(conn, __namespace, None)
+        # for cl in clns:
+        #     print(cl)
 
         statObjectMap = getStatObjectMap(conn, __namespace)
         statAssociations = getStatAssociations(conn, __namespace)
@@ -205,6 +209,10 @@ def collect_performance(conn, tracker):
         logger.info("volumes: {0}", len(volumes))
         if volumes:
             logger.debug("volumes[0].tomof(): {0}", volumes[0].tomof())
+
+        # for assoc in statAssociations:
+        #     print(assoc.get("ManagedElement"))
+        #     print(assoc.get("Stats"))
 
         controllerStats = []
         for c in controllers:
@@ -247,12 +255,12 @@ def collect_performance(conn, tracker):
             logger.debug("fcPortStatistics: {0}", fcPortStats[0].tomof())
         if (len(volumeStats) > 0):
             logger.debug("volumeStatistics: {0}", volumeStats[0].tomof())
-            for vs in volumeStats:
-                logger.debug("volumeStat: {0}", vs.tomof())
+            # for vs in volumeStats:
+            #     logger.debug("volumeStat: {0}", vs.tomof())
         if len(diskStats) > 0:
             logger.debug("diskStatistics: {0}", diskStats[0].tomof())
-            for ds in diskStats:
-                logger.debug("diskStat: {0}", ds.tomof())
+            # for ds in diskStats:
+            #     logger.debug("diskStat: {0}", ds.tomof())
 
         statsCap = getStatsCapabilities(conn, ps_array)
         clockTickInterval = None
@@ -268,7 +276,7 @@ def collect_performance(conn, tracker):
         model = fsm.storage.SanNasModel(data_update=update)
 
         for performance in performances:
-            submit_performance(model, performance, tracker, update)
+            submit_performance(model, performance, tracker)
 
         # submission = update.prepare_submission().json
         # print("submission", submission)

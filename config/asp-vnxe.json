@@ -1,6 +1,6 @@
 {
-  "host"     : "10.1.132.33",
-  "port"     : "5989",
+  "host"     : "10.1.132.24",
+  "port"     : "5988",
   "username" : "local/smilab",
   "password" : "F00sb4ll#"
 }
