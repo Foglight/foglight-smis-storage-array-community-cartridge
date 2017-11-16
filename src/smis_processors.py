@@ -264,7 +264,7 @@ def processITLs(array, cim_volumeMappingSPCs):
 
 
     for itl0 in itl0s.values():
-        itl0path = array.create_ITL0(itl1['devicePath'], itl1['lun'])
+        itl0path = array.create_ITL0(itl0['devicePath'], itl0['lun'])
         itl0paths.add(itl0path)
 
     array.set_ITLs0(itl0paths)

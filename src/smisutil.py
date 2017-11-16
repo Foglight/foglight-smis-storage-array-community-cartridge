@@ -682,9 +682,10 @@ def getSCSIProtocolControllers(conn, array):
                 for ap in authPrivileges:
                     storHardwareIDs = getAssociatedEntities(ap, mAuthorizedSubjectLookup, mStorageHardwareIDLookup)
                     # initiators
-                    hardwareIDs = spc.get("storHardwareIDs", [])
-                    hardwareIDs += storHardwareIDs
-                    spc.__setitem__("storHardwareIDs", hardwareIDs)
+                    if None != storHardwareIDs and len(storHardwareIDs) > 0:
+                        hardwareIDs = spc.get("storHardwareIDs", [])
+                        hardwareIDs += storHardwareIDs
+                        spc.__setitem__("storHardwareIDs", hardwareIDs)
 
             # The CIM_ProtocolControllerForUnit associates a Volume to this SPC. It contains a property,
             # "DeviceNumber", that is the LUN of this association of a Volume to a Port.

@@ -45,13 +45,13 @@
 
     <!-- Check to see if we are online at the moment -->
     <condition property="is.online" value="true">
-        <http url="http://torrepos.prod.quest.corp/ivysettings"/>
+        <http url="https://azrepos.labs.quest.com/ivysettings"/>
     </condition>
 
     <target name="-settings-online" if="is.online">
         <echo level="info">Loading online settings</echo>
 
-        <property name="public.settings.url" value="http://torrepos.prod.quest.corp/ivysettings"/>
+        <property name="public.settings.url" value="https://azrepos.labs.quest.com/ivysettings"/>
 
         <!-- In online mode, we must check the following revision patterns to see
             if they have changed or not. Anything with a revision of "latest.(anything) OR
@@ -86,7 +86,7 @@
     <target name="-ivy-prepare">
         <mkdir dir="${bootstrap.dir}/bootstrap"/>
 
-        <get src="http://torrepos.prod.quest.corp/rmdata/dell/ivy-bootstrap/1.0/docs/ivy-bootstrap.xml"
+        <get src="https://azrepos.labs.quest.com/rmdata/dell/ivy-bootstrap/1.0/docs/ivy-bootstrap.xml"
              dest="${bootstrap.dir}/bootstrap/ivy-bootstrap.xml"
              ignoreerrors="true"
              verbose="false"
@@ -123,13 +123,35 @@
         <ivy:configure url="${settings.url}" override="true"/>
     </target>
 
+    <property environment="env"/>
+    <loadresource property="git.short.sha">
+        <concat>${env.GIT_COMMIT}</concat>
+        <filterchain>
+          <replaceregex pattern="(.{8}).*" replace="\1"/>
+        </filterchain>
+    </loadresource>
+    <condition property="scm.revision" value="-${env.SVN_REVISION}">
+        <isset property="env.SVN_REVISION"/>
+    </condition>
+    <condition property="scm.revision" value="">
+        <isset property="env.GIT_COMMIT"/>
+    </condition>
+    <tstamp>
+        <format property="timestamp" pattern="yyyyMMddHHmm"/>
+    </tstamp>
+    <condition property="build.id"
+               value="${cartridge.version}-${timestamp}${scm.revision}-${env.BUILD_NUMBER}"
+               else="${cartridge.version}-${timestamp}-dev">
+        <isset property="env.BUILD_NUMBER" />
+    </condition>
+
     <property name="confs.to.publish" value="cartridge,docs"/>
     <target name="publish" depends="car,-cache-settings">
         <!-- Resolve (but don't download) all dependencies before publishing -->
         <ivy:resolve haltonfailure="false"
                      type="this-matches-nothing"/>
 
-        <property name="ivy.deliver.revision" value="${build.number}"/>
+        <property name="ivy.deliver.revision" value="${build.id}"/>
         <property name="ivy.publish.resolver" value="${publish.resolver}"/>
 
         <ivy:publish conf="${confs.to.publish}"

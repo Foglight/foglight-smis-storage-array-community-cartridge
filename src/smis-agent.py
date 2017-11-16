@@ -47,7 +47,7 @@ tracker = None
 
 def collect_inventory(conn, tracker):
     logger.info("Starting inventory collection")
-    _start = timer()
+    _start = datetime.datetime.now()
 
     arrays = getArrays(conn)
     logger.info("arrays: {0}", len(arrays))
@@ -153,15 +153,17 @@ def collect_inventory(conn, tracker):
             update.abort()
         logger.error(traceback.format_exc())
     finally:
+        tracker._record_stamp("last_inventory_started", _start)
         tracker.record_inventory()
 
-    logger.info("Inventory collection completed and submitted in %d seconds" % round(timer() - _start))
+    logger.info("Inventory collection completed and submitted in %d seconds" % (datetime.datetime.now() - _start).total_seconds())
     return None
 
 
 def collect_performance(conn, tracker):
     logger.info("Starting performance collection")
-    _start = timer()
+    _start = datetime.datetime.now()
+    tracker._record_stamp("last_performance_started", _start)
 
     arrays = getArrays(conn)
     performances = []
@@ -255,8 +257,9 @@ def collect_performance(conn, tracker):
             logger.debug("fcPortStatistics: {0}", fcPortStats[0].tomof())
         if (len(volumeStats) > 0):
             logger.debug("volumeStatistics: {0}", volumeStats[0].tomof())
-            # for vs in volumeStats:
-            #     logger.debug("volumeStat: {0}", vs.tomof())
+            for vs in volumeStats:
+                if vs['KBytesWritten'] > 0:
+                    logger.debug("volumeStat: {0}", vs.tomof())
         if len(diskStats) > 0:
             logger.debug("diskStatistics: {0}", diskStats[0].tomof())
             # for ds in diskStats:
@@ -288,7 +291,7 @@ def collect_performance(conn, tracker):
     finally:
         tracker.record_performance()
 
-    logger.info("Performance collection completed and submitted in %d seconds" % round(timer() - _start))
+    logger.info("Performance collection completed and submitted in %d seconds" % (datetime.datetime.now() - _start).total_seconds())
     return None
 
 
