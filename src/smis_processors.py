@@ -104,9 +104,11 @@ def processVolumes(array, cim_volumes, poolsMap):
             lun = array.get_lun(v["DeviceID"])
 
             lun.set_label("Lun")   # so the UI knows to call these "Volumes"
-            _name = v["ElementName"]
+            _name = ''
             if v.has_key("Caption") and v["Caption"] != None:
                 _name = v["Caption"]
+            if v.has_key("ElementName") and v["ElementName"] != None:
+                _name = v["ElementName"]
             lun.set_property("name", _name)
 
             pool = poolsMap[v["PoolID"]]
