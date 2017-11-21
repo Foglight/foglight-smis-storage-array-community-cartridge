@@ -615,6 +615,27 @@ def processDiskStats(array, diskStats, lastStats, _tracker, clockTickInterval):
     return None
 
 
+def processPoolStats(array, poolVolumeMap, pools):
+    for poolID in poolVolumeMap.keys():
+        pool = array.get_pool(poolID)
+        cim_luns = poolVolumeMap[poolID]
+
+        advertisedSize = 0
+        for v in cim_luns:
+            lun = array.get_lun(v["DeviceID"])
+            advertisedSize += lun.get_property("advertisedSize")
+
+        pool.set_metric("conf_LunSize", advertisedSize)
+
+        for p in pools:
+            if poolID == p.get("InstanceID"):
+                remainingSpace = p.get("RemainingManagedSpace")
+                pool.set_metric("raw_available", remainingSpace / 1024 / 1024)
+                print(poolID, remainingSpace / 1024 / 1024)
+
+        print(poolID, advertisedSize)
+    return None
+
 def submit_performance(model, performance, _tracker):
     ps_array = performance['ps_array']
 
@@ -631,12 +652,15 @@ def submit_performance(model, performance, _tracker):
         volumeStats = performance['volumeStats']
         diskStats = performance['diskStats']
         clockTickInterval = performance['clockTickInterval']
+        poolVolumeMap = performance['poolVolumeMap']
+        pools = performance['pools']
 
         processControllerStats(array, controllerStats, last_stats['controllerStats'], _tracker)
         processFcPortStats(array, fcPortStats,         last_stats['fcPortStats'],     _tracker)
         processIscsiPortStats(array, iscsiPortStats,   last_stats['iscsiPortStats'],  _tracker)
         processVolumeStats(array, volumeStats,         last_stats['volumeStats'],     _tracker, clockTickInterval)
         processDiskStats(array, diskStats,             last_stats['diskStats'],       _tracker, clockTickInterval)
+        processPoolStats(array, poolVolumeMap, pools)
 
     volume_mapping_spcs_path = "{0}/volume_mapping_spcs_{1}.txt".format(foglight.get_agent_specific_directory(), ps_array["SerialID"])
     volumeMappingSPCs = pickle_load(volume_mapping_spcs_path)

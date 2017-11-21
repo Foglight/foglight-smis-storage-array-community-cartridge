@@ -256,10 +256,11 @@ def collect_performance(conn, tracker):
         if (len(fcPortStats) > 0):
             logger.debug("fcPortStatistics: {0}", fcPortStats[0].tomof())
         if (len(volumeStats) > 0):
-            logger.debug("volumeStatistics: {0}", volumeStats[0].tomof())
             for vs in volumeStats:
                 if vs['KBytesWritten'] > 0:
                     logger.debug("volumeStat: {0}", vs.tomof())
+                    break
+
         if len(diskStats) > 0:
             logger.debug("diskStatistics: {0}", diskStats[0].tomof())
             # for ds in diskStats:
@@ -272,7 +273,8 @@ def collect_performance(conn, tracker):
 
         performances.append({'ps_array': ps_array,
             'controllerStats': controllerStats, 'fcPortStats': fcPortStats, 'iscsiPortStats': iscsiPortStats,
-            'volumeStats': volumeStats, 'diskStats': diskStats, 'clockTickInterval': clockTickInterval})
+            'volumeStats': volumeStats, 'diskStats': diskStats, 'clockTickInterval': clockTickInterval,
+            'poolVolumeMap': poolVolumeMap, 'pools': pools})
 
     try:
         update = foglight.topology.begin_data_collection()

@@ -1,7 +1,5 @@
 {
   "host"     : "",
-  "target"     : "",
-  "ipAddress"     : "",
   "port"     : "5988",
   "username" : "",
   "password" : ""
