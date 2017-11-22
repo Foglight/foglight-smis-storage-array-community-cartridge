@@ -615,7 +615,7 @@ def processDiskStats(array, diskStats, lastStats, _tracker, clockTickInterval):
     return None
 
 
-def processPoolStats(array, poolVolumeMap, pools):
+def processPoolStats(array, poolVolumeMap, cim_pools):
     for poolID in poolVolumeMap.keys():
         pool = array.get_pool(poolID)
         cim_luns = poolVolumeMap[poolID]
@@ -624,16 +624,23 @@ def processPoolStats(array, poolVolumeMap, pools):
         for v in cim_luns:
             lun = array.get_lun(v["DeviceID"])
             advertisedSize += lun.get_property("advertisedSize")
-
         pool.set_metric("conf_LunSize", advertisedSize)
 
-        for p in pools:
-            if poolID == p.get("InstanceID"):
-                remainingSpace = p.get("RemainingManagedSpace")
-                pool.set_metric("raw_available", remainingSpace / 1024 / 1024)
-                print(poolID, remainingSpace / 1024 / 1024)
+        cim_pool = findPoolByID(cim_pools, poolID)
 
-        print(poolID, advertisedSize)
+        totalSpace = cim_pool.get("TotalManagedSpace")
+        if None != totalSpace:
+            pool.set_metric("conf_capacity", totalSpace >> 20)
+
+        remainingSpace = cim_pool.get("RemainingManagedSpace")
+        if None != remainingSpace:
+            pool.set_metric("conf_available", remainingSpace >> 20)
+    return None
+
+def findPoolByID(pools, poolID):
+    for p in pools:
+        if poolID == p.get("InstanceID"):
+            return p
     return None
 
 def submit_performance(model, performance, _tracker):
