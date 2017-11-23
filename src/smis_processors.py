@@ -624,6 +624,7 @@ def processPoolStats(array, poolVolumeMap, cim_pools):
         for v in cim_luns:
             lun = array.get_lun(v["DeviceID"])
             advertisedSize += lun.get_property("advertisedSize")
+
         pool.set_metric("conf_LunSize", advertisedSize)
 
         cim_pool = findPoolByID(cim_pools, poolID)
