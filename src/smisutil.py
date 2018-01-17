@@ -5,6 +5,9 @@ from __future__ import print_function
 import string
 import traceback
 import foglight.logging
+from smisconn import smisconn
+
+from requests.exceptions import SSLError
 
 from pywbemReq.cim_obj import CIMInstanceName, CIMInstance
 from pywbemReq.cim_operations import is_subclass
@@ -839,10 +842,15 @@ def getVolumeStatistics(conn, volume, statAssociations, statObjectMap):
     volumeStat = getAssociatedStatistics(conn, volume.path, statAssociations, statObjectMap)
 
     if volumeStat == None or len(volumeStat) <= 0:
-        volumeStat = conn.Associators(volume.path,
+        for i in range(1,3):
+            try:
+                volumeStat = conn.Associators(volume.path,
                                       AssocClass="CIM_ElementStatisticalData",
                                       ResultClass="CIM_BlockStorageStatisticalData",
                                       IncludeClassOrigin=True)
+                break
+            except SSLError,e:
+                pass
 
     if len(volumeStat) > 0:
         volumeStat[0].__setitem__("statID", volume["DeviceID"])
@@ -872,17 +880,27 @@ def getAssociatedStatistics(conn, path, statAssociations, statDataMap):
 
 
 def getStatObjectMap(conn, NAMESPACE):
-    statObjects = conn.EnumerateInstances("CIM_BlockStorageStatisticalData",
-                                        namespace=NAMESPACE, DeepInheritance=True)
     statObjectMap = {}
-    for d in statObjects:
-        statObjectMap[d.path] = d
+    try:
+        statObjects = conn.EnumerateInstances("CIM_BlockStorageStatisticalData",
+                                            namespace=NAMESPACE, DeepInheritance=True)
+
+        for d in statObjects:
+            statObjectMap[d.path] = d
+    except Exception, e:
+        logger.error("trying to get statistical data found exception {1}", traceback.format_exc())
+
     return statObjectMap
 
 
 def getStatAssociations(conn, NAMESPACE):
-    statAssociations = conn.EnumerateInstances("CIM_ElementStatisticalData",
+    statAssociations = {}
+    try:
+        statAssociations = conn.EnumerateInstances("CIM_ElementStatisticalData",
                                     namespace=NAMESPACE, DeepInheritance=True)
+    except Exception, e:
+        logger.error("trying to get statistical data association found exception {1}", traceback.format_exc())
+
     return statAssociations
 
 
@@ -894,10 +912,11 @@ def getClassNames(conn, NAMESPACE, filter):
 
 
 def getBlockStorageViewsSupported(conn):
-    profiles = conn.EnumerateInstances("CIM_RegisteredProfile")
+    _conn = smisconn(conn)
+    profiles = _conn.EnumerateInstances("CIM_RegisteredProfile")
     profiles = [s for s in profiles if s.get("RegisteredName") == 'Block Storage Views']
 
-    subprofiles = conn.EnumerateInstances("CIM_RegisteredSubprofile")
+    subprofiles = _conn.EnumerateInstances("CIM_RegisteredSubprofile")
     subprofiles = [s for s in subprofiles if s.get("RegisteredName") == 'Block Storage Views']
 
     isBlockStorageViewsSupported = len(profiles) > 0 or len(subprofiles) > 0

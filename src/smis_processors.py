@@ -142,12 +142,33 @@ def processVolumes(array, cim_volumes, poolsMap):
                 if 0 <= consumedBytes:
                     lun.set_property("advertisedSize", long(consumedBytes / 1024 / 1024))
 
+            rule = "" if not v.has_key("RaidLevel") else v["RaidLevel"]
+            protection = getProtection(rule)
+            lun.set_property("protection", protection)
+
+            logger.debug("Lun {0} protection: {1}", v["DeviceID"], protection)
             # RawCapacity
-            # setProtection
         except Exception, e:
             logger.error(e.message)
     logger.info("processVolumes end")
     return None
+
+
+def getProtection(rule):
+    result = rule
+    if None == result:
+        result = "(unknown)"
+
+    if rule in ('RAID0'):
+        result += " S"
+    elif rule in ('RAID1', 'RAID10', 'RAID1+0'):
+        result += " M/S"
+    elif rule in ('RAID3', 'RAID5', 'RAID6', 'RAID50', 'RAID60'):
+        result += " S/P"
+    elif rule in ('RAID51', 'RAID15'):
+        result += " M/S/P"
+
+    return result
 
 
 def processDisks(array, cim_disks, poolsMap):
@@ -206,51 +227,64 @@ def processITLs(array, cim_volumeMappingSPCs):
     itl0s = {}
     itl1s = {}
     if None == cim_volumeMappingSPCs:
+        logger.warn('There''s no ITLs found!')
         return
     # print("len(volumePath):", len(cim_volumeMappingSPCs.keys()))
     for volumePath in cim_volumeMappingSPCs.keys():
-        # print(volumePath)
         spcs = cim_volumeMappingSPCs[volumePath]
-        for spc in spcs:
-            storHardwareIDs = spc.get("storHardwareIDs")
-            ports = spc.get("ports")
-            pcfus = spc.get("pcfus")
 
-            # print(ports[0].tomof())
-            # print(pcfus[0].tomof())
+        for spc in spcs:
+            pcfus = spc.get("pcfus")
+            ports = spc.get("ports")
+            storHardwareIDs = spc.get("storHardwareIDs")
+
+            portsLen = 0 if None == ports else len(ports)
+            pcfusLen = 0 if None == pcfus else len(pcfus)
+            hardwareIdsLen = 0 if None == storHardwareIDs else len(storHardwareIDs)
+
+            if (pcfusLen == 0 or portsLen == 0): continue
+
+            logger.debug("get mapping to LUN {0}, pcfus: {1}, ports: {2}, storHardwareIDs: {3}",
+                         volumePath, pcfusLen, portsLen, hardwareIdsLen)
 
             for pcfu in pcfus:
                 deviceNumber = long(pcfu.get("DeviceNumber"), 16)
                 volumePath = pcfu.path.get("Dependent")
                 lunId = volumePath.get("DeviceID")
 
-                if None == ports:
-                    continue
                 for port in ports:
                     portwwn = port.get("PermanentAddress").lower()
                     portType = 'FC' if port.get("CreationClassName").lower().endswith("fcport") else "ISCSI"
 
-                    if not itl0s.__contains__(portwwn):
+                    logger.debug("get ITL0 lunId: {0}, portwwn: {1}",
+                                 lunId, portwwn)
+
+                    itl0Key = lunId + portwwn
+                    if not itl0s.__contains__(itl0Key):
                         itl0 = {
                             'lun': lunId,
                             'devicePath': portwwn,
                         }
-                        itl0s[portwwn] = itl0
+                        itl0s[itl0Key] = itl0
 
-                    if None == storHardwareIDs:
+                    if hardwareIdsLen == 0:
                         continue
                     for hardwareId in storHardwareIDs:
                         storageId = hardwareId.get("StorageID").lower()
                         devicePath = "%s\t%s:%s" % (storageId, portwwn, deviceNumber)
 
-                        if not itl1s.__contains__(devicePath):
+                        logger.debug("get ITL1 lunId: {0}, portwwn: {1}， devicePath: {2}",
+                                     lunId, portwwn, devicePath)
+
+                        itl1Key = lunId +devicePath
+                        if not itl1s.__contains__(itl1Key):
                             itl1 = {
                                 'lun': lunId,
                                 'targetPort': portwwn,
                                 'targetPortType': portType,
                                 'devicePath': devicePath
                             }
-                            itl1s[devicePath] = itl1
+                            itl1s[itl1Key] = itl1
 
 
     itl1s = sorted(itl1s.values(), key=lambda d : d['devicePath'])
@@ -501,6 +535,9 @@ def processVolumeStats(array, volumeStats, lastStats, _tracker, clockTickInterva
             volume.set_metric("opsTotal", opsTotal / durationInt)
 
             if None != clockTickInterval and clockTickInterval > 0:
+                if clockTickInterval >= 1000000:
+                    clockTickInterval = 1
+
                 if readIOTimeCounter > 0 and opsRead > 0:
                     volume.set_metric("latencyRead", readIOTimeCounter / opsRead * clockTickInterval / 1000)
                 if writeIOTimeCounter > 0 and opsWrite > 0:
@@ -596,6 +633,9 @@ def processDiskStats(array, diskStats, lastStats, _tracker, clockTickInterval):
             disk.set_metric("opsTotal", opsTotal / durationInt)
 
             if None != clockTickInterval and clockTickInterval > 0:
+                if clockTickInterval >= 1000000:
+                    clockTickInterval = 1
+
                 if readIOTimeCounter > 0 and opsRead > 0:
                     disk.set_metric("latencyRead", readIOTimeCounter / opsRead * clockTickInterval / 1000)
                 if writeIOTimeCounter > 0 and opsWrite > 0:
