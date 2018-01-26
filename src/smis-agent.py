@@ -363,7 +363,9 @@ def queryCredential(host_url, timeoutSec):
         return None
     query.addProperty("storage.collextarget", host_url)
 
-    queryResult = credService.queryCredentials(query).getResult(1, TimeUnit.MINUTES)
+    queryResult = credService.queryCredentials(query)
+    if None != queryResult:
+        queryResult = queryResult.getResult(1, TimeUnit.MINUTES)
     creds = None if None == queryResult else queryResult.getCredentials()
 
     return creds

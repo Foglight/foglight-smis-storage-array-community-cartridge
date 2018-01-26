@@ -289,22 +289,23 @@ def processITLs(array, cim_volumeMappingSPCs):
 
     itl1s = sorted(itl1s.values(), key=lambda d : d['devicePath'])
 
-    logger.info('itl1s:%d' % len(itl1s))
-    logger.info('itl0s:%d' % len(itl0s))
-
     itl1paths = ArrayList()
     itl0paths = ArrayList()
     for itl1 in itl1s:
         itl1path = array.create_ITL1(itl1['devicePath'], itl1['lun'], itl1['targetPort'], itl1['targetPortType'])
-        itl1paths.add(itl1path)
-
+        if itl1path is not None:
+            itl1paths.add(itl1path)
 
     for itl0 in itl0s.values():
         itl0path = array.create_ITL0(itl0['devicePath'], itl0['lun'])
-        itl0paths.add(itl0path)
+        if itl0path is not None:
+            itl0paths.add(itl0path)
 
     array.set_ITLs0(itl0paths)
     array.set_ITLs1(itl1paths)
+
+    logger.info('itl1s:%d' % len(itl1paths))
+    logger.info('itl0s:%d' % len(itl0paths))
 
     return None
 
