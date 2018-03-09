@@ -142,7 +142,12 @@ def processVolumes(array, cim_volumes, poolsMap):
                 if 0 <= consumedBytes:
                     lun.set_property("advertisedSize", long(consumedBytes / 1024 / 1024))
 
-            rule = "" if not v.has_key("RaidLevel") else v["RaidLevel"]
+            rule = None
+            if rule is None and v.has_key("RaidLevel"):
+                rule = v["RaidLevel"]
+            if rule is None and v.has_key("ErrorMethodology"):
+                rule = v["ErrorMethodology"]
+
             protection = getProtection(rule)
             lun.set_property("protection", protection)
 
@@ -158,7 +163,8 @@ def getProtection(rule):
     result = rule
     if None == result:
         result = "(unknown)"
-
+    return result
+'''
     if rule in ('RAID0'):
         result += " S"
     elif rule in ('RAID1', 'RAID10', 'RAID1+0'):
@@ -167,8 +173,8 @@ def getProtection(rule):
         result += " S/P"
     elif rule in ('RAID51', 'RAID15'):
         result += " M/S/P"
+'''
 
-    return result
 
 
 def processDisks(array, cim_disks, poolsMap):
@@ -223,13 +229,19 @@ class SanCorrelationPath():
         self.lun = lun
 
 
-def processITLs(array, cim_volumeMappingSPCs):
+def processITLs(array, cim_volumeMappingSPCs, volumeStats):
     itl0s = {}
     itl1s = {}
     if None == cim_volumeMappingSPCs:
         logger.warn('There''s no ITLs found!')
         return
     # print("len(volumePath):", len(cim_volumeMappingSPCs.keys()))
+
+    volumeDeviceIdUUIdMap = {}
+    for vs in volumeStats:
+        # print(vs['statID'], vs['uuid'])
+        volumeDeviceIdUUIdMap[vs['statID']] = vs['uuid']
+
     for volumePath in cim_volumeMappingSPCs.keys():
         spcs = cim_volumeMappingSPCs[volumePath]
 
@@ -256,14 +268,15 @@ def processITLs(array, cim_volumeMappingSPCs):
                     portwwn = port.get("PermanentAddress").lower()
                     portType = 'FC' if port.get("CreationClassName").lower().endswith("fcport") else "ISCSI"
 
-                    logger.debug("get ITL0 lunId: {0}, portwwn: {1}",
-                                 lunId, portwwn)
+                    itl0_devicePath = volumeDeviceIdUUIdMap[lunId]
+                    logger.debug("get ITL0 lunId: {0}, devicePath: {1}",
+                                 lunId, itl0_devicePath)
 
-                    itl0Key = lunId + portwwn
+                    itl0Key = itl0_devicePath
                     if not itl0s.__contains__(itl0Key):
                         itl0 = {
                             'lun': lunId,
-                            'devicePath': portwwn,
+                            'devicePath': itl0_devicePath,
                         }
                         itl0s[itl0Key] = itl0
 
@@ -696,16 +709,16 @@ def submit_performance(model, performance, _tracker):
     logger.info("getArray {0} {1}", ps_array.get("SerialID"), ps_array.get("Vendor"))
     array = model.get_storage_array(ps_array.get("SerialID"), ps_array.get("Vendor"))
 
-    if last_stats:
-        controllerStats = performance['controllerStats']
-        fcPortStats = performance['fcPortStats']
-        iscsiPortStats = performance['iscsiPortStats']
-        volumeStats = performance['volumeStats']
-        diskStats = performance['diskStats']
-        clockTickInterval = performance['clockTickInterval']
-        poolVolumeMap = performance['poolVolumeMap']
-        pools = performance['pools']
+    controllerStats = performance['controllerStats']
+    fcPortStats = performance['fcPortStats']
+    iscsiPortStats = performance['iscsiPortStats']
+    volumeStats = performance['volumeStats']
+    diskStats = performance['diskStats']
+    clockTickInterval = performance['clockTickInterval']
+    poolVolumeMap = performance['poolVolumeMap']
+    pools = performance['pools']
 
+    if last_stats:
         processControllerStats(array, controllerStats, last_stats['controllerStats'], _tracker)
         processFcPortStats(array, fcPortStats,         last_stats['fcPortStats'],     _tracker)
         processIscsiPortStats(array, iscsiPortStats,   last_stats['iscsiPortStats'],  _tracker)
@@ -713,9 +726,10 @@ def submit_performance(model, performance, _tracker):
         processDiskStats(array, diskStats,             last_stats['diskStats'],       _tracker, clockTickInterval)
         processPoolStats(array, poolVolumeMap, pools)
 
-    volume_mapping_spcs_path = "{0}/volume_mapping_spcs_{1}.txt".format(foglight.get_agent_specific_directory(), ps_array["SerialID"])
+    volume_mapping_spcs_path = "{0}/volume_mapping_spcs_{1}.txt".format(
+        foglight.get_agent_specific_directory(), ps_array["SerialID"])
     volumeMappingSPCs = pickle_load(volume_mapping_spcs_path)
-    processITLs(array, volumeMappingSPCs)
+    processITLs(array, volumeMappingSPCs, volumeStats)
 
     pickle_dump(last_stats_path, performance)
 

@@ -853,6 +853,7 @@ def getVolumeStatistics(conn, volume, statAssociations, statObjectMap):
                 pass
 
     if len(volumeStat) > 0:
+        volumeStat[0].__setitem__("uuid", volume["Name"])
         volumeStat[0].__setitem__("statID", volume["DeviceID"])
         volumeStat[0].__setitem__("OperationalStatus", volume["OperationalStatus"])
         volumeStat[0].__setitem__("BlockSize", volume["BlockSize"])
