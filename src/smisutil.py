@@ -849,7 +849,7 @@ def getVolumeStatistics(conn, volume, statAssociations, statObjectMap):
                                       ResultClass="CIM_BlockStorageStatisticalData",
                                       IncludeClassOrigin=True)
                 break
-            except SSLError,e:
+            except Exception,e:
                 pass
 
     if len(volumeStat) > 0:
@@ -962,7 +962,7 @@ def getStatsCapabilities(conn, array):
     return statsCaps[0]
 
 def detectInteropNamespace(conn):
-    namespaces = ("interop", "root/interop", "root/pg_interop", "root/cimv2", "root/ibm", "root/eternus", "root")
+    namespaces = ("interop", "root/interop", "root/pg_interop", "root/cimv2", "root/ibm", "root/eternus", "root/hitachi/smis", "root")
     for np in namespaces:
         conn.default_namespace = np
         try:

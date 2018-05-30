@@ -149,9 +149,9 @@ def collect_inventory(conn, tracker):
 
     except Exception, e:
         logger.error(e.message)
+        logger.error(traceback.format_exc())
         if update:
             update.abort()
-        logger.error(traceback.format_exc())
     finally:
         tracker._record_stamp("last_inventory_started", _start)
         tracker.record_inventory()

@@ -871,6 +871,13 @@ def __getStatValue(metricName, stat, lastStat, duration, multiplier=1):
             # print(metricName, v)
     return v
 
+def __str2datetime(str):
+    si = str.index('.')
+    if si > 0:
+        s = str[0:si]
+        return datetime.datetime.strptime(s, '%Y%m%d%H%M%S')
+    else:
+        return None
 
 def __getDuration(stat, lastStat):
     durationInt = 1
@@ -878,7 +885,10 @@ def __getDuration(stat, lastStat):
         st1 = stat.get("StatisticTime")
         st0 = lastStat.get("StatisticTime")
 
-        if st1.is_interval:
+        if isinstance(st1, basestring):
+            d1 = __str2datetime(st1)
+            d0 = __str2datetime(st0)
+        elif st1.is_interval:
             d1 = st1.timedelta
             d0 = st0.timedelta
         else:
