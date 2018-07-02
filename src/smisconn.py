@@ -20,10 +20,11 @@ class smisconn():
         self.conn = conn
 
     def EnumerateInstances(self, ClassName, namespace=None, **params):
+        instances = []
         for i in range(1,3):
             try:
                 instances = self.conn.EnumerateInstances(ClassName, namespace=namespace, **params)
                 break
             except Exception,e:
-                time.sleep(2)
+                time.sleep(10)
         return instances

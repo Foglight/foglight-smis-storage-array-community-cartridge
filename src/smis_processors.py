@@ -33,11 +33,11 @@ def processArray(sanNasModel, cim_array):
 
 def processControllers(array, cim_controllers):
     for c in cim_controllers:
-        controllerName = c["Name"]
+        controller_name = c["Name"]
         if c.has_key("ElementName"):
-            controllerName = c["ElementName"]
+            controller_name = c["ElementName"]
 
-        controller = array.get_controller(controllerName.upper())
+        controller = array.get_controller(controller_name.upper())
         # print(c.tomof())
 
         if c.has_key("IPAddress"):
@@ -56,7 +56,7 @@ def processFcPorts(array, cim_fcPorts):
         try:
             # print("port: ", p.tomof())
             wwn = p.get("PermanentAddress")
-            if (None == wwn): continue
+            if wwn is None: continue
 
             port = array.get_port("FC", wwn)
             port.set_property("name", wwn.lower())
@@ -73,7 +73,7 @@ def processFcPorts(array, cim_fcPorts):
 def processIscsiPorts(array, cim_iscsiPorts):
     for p in cim_iscsiPorts:
         wwn = p.get("PermanentAddress")
-        if (None == wwn): continue
+        if wwn is None: continue
 
         port = array.get_port("ISCSI", wwn)
         port.set_property("name", p["ElementName"])
@@ -105,9 +105,9 @@ def processVolumes(array, cim_volumes, poolsMap):
 
             lun.set_label("Lun")   # so the UI knows to call these "Volumes"
             _name = ''
-            if v.has_key("Caption") and v["Caption"] != None:
+            if v.has_key("Caption") and v["Caption"] is not None:
                 _name = v["Caption"]
-            if v.has_key("ElementName") and v["ElementName"] != None:
+            if v.has_key("ElementName") and v["ElementName"] is not None:
                 _name = v["ElementName"]
             lun.set_property("name", _name)
 
@@ -237,6 +237,8 @@ def processITLs(array, cim_volumeMappingSPCs, volumeStats):
         return
     # print("len(volumePath):", len(cim_volumeMappingSPCs.keys()))
 
+    if len(volumeStats) == 0:
+        return
     volumeDeviceIdUUIdMap = {}
     for vs in volumeStats:
         # print(vs['statID'], vs['uuid'])
@@ -254,7 +256,7 @@ def processITLs(array, cim_volumeMappingSPCs, volumeStats):
             pcfusLen = 0 if None == pcfus else len(pcfus)
             hardwareIdsLen = 0 if None == storHardwareIDs else len(storHardwareIDs)
 
-            if (pcfusLen == 0 or portsLen == 0): continue
+            if pcfusLen == 0 or portsLen == 0: continue
 
             logger.debug("get mapping to LUN {0}, pcfus: {1}, ports: {2}, storHardwareIDs: {3}",
                          volumePath, pcfusLen, portsLen, hardwareIdsLen)
@@ -787,7 +789,11 @@ def convertCIMOperationalStatus(opStats):
 
     for opStat in opStats:
         if None != opStat:
-            if opStat in ("In Service"):
+            """
+            When there are multiple statuses, these won't cause the analysis
+            to stop, e.g. disk status "OK, In Service"
+            """
+            if opStat in "In Service":
                 if PerfStates.Normal == state:
                     state = PerfStates.Rebuild # disk rebuild states: "OK, In Service"
                 else:
@@ -800,7 +806,7 @@ def convertCIMOperationalStatus(opStats):
             elif opStat in ("Unknown", "Other", "Starting", "Completed", "Power Mode", "Online", "Success"):
                 state = PerfStates.Normal
                 break
-            elif opStat in ("Removed"):
+            elif opStat in "Removed":
                 state = PerfStates.Removed
                 break
             elif opStat in ("Stopping", "Stopped"):
@@ -810,13 +816,9 @@ def convertCIMOperationalStatus(opStats):
                             "Lost Communication", "Aborted", "Offline", "Failure"):
                 state = PerfStates.Failed
                 break
-                """
-                When there are multiple statuses, these won't cause the analysis
-                to stop, e.g. disk status "OK, In Service"
-                """
             elif opStat in ("OK", "DMTF Reserved", "Vendor Reserved"):
                 state = PerfStates.Normal
-            elif opStat in ("Error"):
+            elif opStat in "Error":
                 state = PerfStates.Failed
             else:
                 state = PerfStates.Normal
@@ -825,7 +827,7 @@ def convertCIMOperationalStatus(opStats):
 
 
 def getBusyPercent(busyTicks, idleTicks):
-    if None == busyTicks or None == idleTicks:
+    if busyTicks is None or idleTicks is None:
         return None
 
     totalTicks = busyTicks + idleTicks
@@ -836,7 +838,7 @@ def getBusyPercent(busyTicks, idleTicks):
 
 
 def computeUtilization(bytesTransferred, speedBytesPerSecond, seconds):
-    if bytesTransferred == None or speedBytesPerSecond == None or seconds == None:
+    if bytesTransferred is None or speedBytesPerSecond is None or seconds is None:
         return None
 
     if seconds == 0 or speedBytesPerSecond == 0:
@@ -866,6 +868,8 @@ def __getStatValue(metricName, stat, lastStat, duration, multiplier=1):
         currVal = stat[metricName]
         lastVal = lastStat[metricName]
 
+        if duration == 0:
+            duration = 1
         if currVal != None and lastVal != None:
             v = (currVal - lastVal) * multiplier / duration
             # print(metricName, v)
@@ -881,7 +885,7 @@ def __str2datetime(str):
 
 def __getDuration(stat, lastStat):
     durationInt = 1
-    if None != stat and lastStat != None:
+    if stat is not None and lastStat is not None:
         st1 = stat.get("StatisticTime")
         st0 = lastStat.get("StatisticTime")
 

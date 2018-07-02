@@ -11,6 +11,7 @@ from timeit import default_timer as timer
 import requests.packages.urllib3
 import urllib3
 from pywbemReq.cim_operations import WBEMConnection,CIMError
+import pickle
 
 import foglight.asp
 import foglight.logging
@@ -126,15 +127,20 @@ def collect_inventory(conn, tracker):
             logger.debug("volumes[0]: {0}", volumes[0].tomof())
 
         maskingMappingViews = getMaskingMappingViews(conn, ps_array)
-        if None == maskingMappingViews or len(maskingMappingViews) < 1:
+        if maskingMappingViews is None or len(maskingMappingViews) < 1:
             _itl_start = timer()
             volumeMappingSPCs = getSCSIProtocolControllers(conn, ps_array)
             logger.info("Retrieve SCSIProtocolControllers in %d seconds" % round(timer() - _itl_start))
 
-        inventories.append({'ps_array': ps_array,
+        array_inventory = {'ps_array': ps_array,
                           'controllers': controllers, 'fcPorts': fcPorts, 'iscsiPorts': iscsiPorts,
                           'pools': pools, 'disks': disks, 'volumes': volumes, 'poolDiskMap': poolDiskMap,
-                            'volumeMappingSPCs': volumeMappingSPCs})
+                           'poolVolumeMap': poolVolumeMap, 'volumeMappingSPCs': volumeMappingSPCs}
+        inventories.append(array_inventory)
+
+        cim_array_path = "{0}/cim_array_{1}.txt".format(foglight.get_agent_specific_directory(),
+                                                        ps_array.get("ElementName"))
+        pickle_dump(cim_array_path, array_inventory)
 
     update = None
     try:
@@ -169,12 +175,13 @@ def collect_performance(conn, tracker):
     performances = []
     for ps_array in arrays:
         __namespace = ps_array.path.namespace
+        conn.default_namespace = __namespace
         logger.info("NAMESPACE: {0}", __namespace)
+        __CLASS_NAMES = getClassNames(conn, __namespace, None)
 
-        if (not hasStatisticalDataClass(conn, __namespace)):
+        if not hasStatisticalDataClass(conn, __namespace, __CLASS_NAMES):
             continue
 
-        # clns = getClassNames(conn, __namespace, None)
         # for cl in clns:
         #     print(cl)
 
@@ -189,25 +196,33 @@ def collect_performance(conn, tracker):
         supportedViews = getSupportedViews(conn, ps_array, isBlockStorageViewsSupported)
         logger.info("supportedViews: {0}", supportedViews)
 
-        controllers = getControllers(conn, ps_array)
+        cim_array_path = "{0}/cim_array_{1}.txt".format(foglight.get_agent_specific_directory(),
+                                                        ps_array.get("ElementName"))
+        cim_array_inventory = pickle_load(cim_array_path)
+
+        # controllers = getControllers(conn, ps_array
+        controllers = cim_array_inventory['controllers']
         logger.info("controllers: {0}", len(controllers))
 
-        fcPorts = getFcPorts(conn, ps_array, controllers)
+        # fcPorts = getFcPorts(conn, ps_array, controllers)
+        fcPorts = cim_array_inventory['fcPorts']
         logger.info("fc ports: {0}", len(fcPorts))
 
-        iscsiPorts = getIscisiPorts(conn, ps_array, controllers)
+        # iscsiPorts = getIscisiPorts(conn, ps_array, controllers)
+        iscsiPorts = cim_array_inventory['iscsiPorts']
         logger.info("iscsi ports: {0}", len(iscsiPorts))
 
-        pools = getPools(conn, ps_array)
+        # pools = getPools(conn, ps_array)
+        pools = cim_array_inventory['pools']
         logger.info("pools: {0}", len(pools))
 
-        disks = getDisks(conn, ps_array, controllers, supportedViews)
+        # disks = getDisks(conn, ps_array, controllers, supportedViews)
+        disks = cim_array_inventory['disks']
         logger.info("disks: {0}", len(disks))
-        if disks:
-            logger.debug("disks[0].tomof(): {0}", disks[0].tomof())
 
-        poolVolumeMap = getPoolVolumesMap(conn, ps_array, pools, supportedViews)
-        volumes = [y for x in poolVolumeMap.values() for y in x]
+        # volumes = [y for x in poolVolumeMap.values() for y in x]
+        poolVolumeMap = cim_array_inventory['poolVolumeMap']
+        volumes = cim_array_inventory['volumes']
         logger.info("volumes: {0}", len(volumes))
         if volumes:
             logger.debug("volumes[0].tomof(): {0}", volumes[0].tomof())
@@ -245,17 +260,18 @@ def collect_performance(conn, tracker):
         logger.info("volumeStats: {0}", len(volumeStats))
 
         diskStats = []
+        isMediaPresent = {"CIM_MediaPresent", "CIM_StorageExtent"}.issubset(__CLASS_NAMES)
         for d in disks:
-            diskStat = getDiskStatistics(conn, d, statAssociations, statObjectMap)
+            diskStat = getDiskStatistics(conn, d, statAssociations, statObjectMap, isMediaPresent)
             if len(diskStat) > 0:
                 diskStats += diskStat
         logger.info("diskStats: {0}", len(diskStats))
 
-        if (len(controllerStats) > 0):
+        if len(controllerStats) > 0:
             logger.debug("controllerStatistics: {0}", controllerStats[0].tomof())
-        if (len(fcPortStats) > 0):
+        if len(fcPortStats) > 0:
             logger.debug("fcPortStatistics: {0}", fcPortStats[0].tomof())
-        if (len(volumeStats) > 0):
+        if len(volumeStats) > 0:
             for vs in volumeStats:
                 if vs['KBytesWritten'] > 0:
                     logger.debug("volumeStat: {0}", vs.tomof())
@@ -268,7 +284,7 @@ def collect_performance(conn, tracker):
 
         statsCap = getStatsCapabilities(conn, ps_array)
         clockTickInterval = None
-        if None != statsCap:
+        if statsCap is not None:
             clockTickInterval = statsCap['ClockTickInterval']
 
         performances.append({'ps_array': ps_array,
@@ -308,7 +324,7 @@ def execute_request(server_url, creds, namespace):
         foglight.utils.disable_ssl_cert_checking()
 
         # Create a connection
-        conn = WBEMConnection(server_url, creds, default_namespace=namespace, verify=False, timeout=1200)
+        conn = WBEMConnection(server_url, creds, default_namespace=namespace, verify=False, timeout=1800)
         logger.info("conn: {0}", conn)
         detectInteropNamespace(conn)
 
@@ -347,6 +363,22 @@ def getServerUrl(host, port):
     url += host + ':' + port
     return url
 
+def pickle_load(filename):
+    f = None
+    try:
+        f = open(filename, 'rb')
+        return pickle.load(f)
+    except(IOError,EOFError):
+        return None
+    finally:
+        if f:
+            f.close()
+
+def pickle_dump(filename, obj):
+    f = open(filename, 'wb')
+    pickle.dump(obj, f)
+    f.close()
+
 
 def debug(*args):
     if DEBUG:
@@ -359,14 +391,14 @@ def queryCredential(host_url, timeoutSec):
     credService = foglight.services['CleartextCredentialService3']
 
     query = credQueryBuilder.createQuery("StorageMonitoring")
-    if None == query:
+    if query is None:
         return None
     query.addProperty("storage.collextarget", host_url)
 
     queryResult = credService.queryCredentials(query)
-    if None != queryResult:
+    if queryResult is not None:
         queryResult = queryResult.getResult(1, TimeUnit.MINUTES)
-    creds = None if None == queryResult else queryResult.getCredentials()
+    creds = None if queryResult is None else queryResult.getCredentials()
 
     return creds
 
@@ -380,14 +412,14 @@ def main():
 
     creds = None
     credList = queryCredential(asp["host"], 60)
-    if credList != None and len(credList) > 0:
+    if credList is not None and len(credList) > 0:
         for cred in credList:
             if cred.__class__.__name__.endswith("LoginPasswordCredential"):
                 creds = (cred.getUsername(), cred.getPassword())
                 logger.info("found credential for {0}", asp["host"])
                 break
 
-    if creds == None:
+    if creds is None:
         creds = (asp["username"], asp["password"])
 
     # call the method to execute the request and display results
