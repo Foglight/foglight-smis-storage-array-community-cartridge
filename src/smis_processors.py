@@ -38,7 +38,6 @@ def processControllers(array, cim_controllers):
             controller_name = c["ElementName"]
 
         controller = array.get_controller(controller_name.upper())
-        # print(c.tomof())
 
         if c.has_key("IPAddress"):
             controller.set_property("ip", c["IPAddress"])
@@ -343,8 +342,7 @@ def submit_inventory(sanNasModel, inventory):
     processVolumes(array, cim_volumes, poolsMap)
     processDisks(array, cim_disks, poolsMap)
 
-    volume_mapping_spcs_path = "{0}/volume_mapping_spcs_{1}.txt".format(foglight.get_agent_specific_directory(),
-                                                                        cim_array["SerialID"])
+    volume_mapping_spcs_path = get_volume_mapping_spcs_path(cim_array["SerialID"])
     pickle_dump(volume_mapping_spcs_path, inventory['volumeMappingSPCs'])
 
     logger.info("submit_inventory end")
@@ -705,7 +703,7 @@ def findPoolByID(pools, poolID):
 def submit_performance(model, performance, _tracker):
     ps_array = performance['ps_array']
 
-    last_stats_path = "{0}/raw_stats_{1}.txt".format(foglight.get_agent_specific_directory(), ps_array["SerialID"])
+    last_stats_path = get_array_stats_path(ps_array["SerialID"])
     last_stats = pickle_load(last_stats_path)
 
     logger.info("getArray {0} {1}", ps_array.get("SerialID"), ps_array.get("Vendor"))
@@ -728,8 +726,7 @@ def submit_performance(model, performance, _tracker):
         processDiskStats(array, diskStats,             last_stats['diskStats'],       _tracker, clockTickInterval)
         processPoolStats(array, poolVolumeMap, pools)
 
-    volume_mapping_spcs_path = "{0}/volume_mapping_spcs_{1}.txt".format(
-        foglight.get_agent_specific_directory(), ps_array["SerialID"])
+    volume_mapping_spcs_path = get_volume_mapping_spcs_path(ps_array["SerialID"])
     volumeMappingSPCs = pickle_load(volume_mapping_spcs_path)
     processITLs(array, volumeMappingSPCs, volumeStats)
 
@@ -737,6 +734,20 @@ def submit_performance(model, performance, _tracker):
 
     # print("controllerStats", controllerStats)
     return None
+
+
+def get_volume_mapping_spcs_path(array_id):
+    volume_mapping_spcs_path = "{0}/volume_mapping_spcs_{1}.txt".format(
+        foglight.get_agent_specific_directory(), array_id)
+    return volume_mapping_spcs_path
+
+def get_array_stats_path(array_id):
+    array_stats_path = "{0}/raw_stats_{1}.txt".format(foglight.get_agent_specific_directory(), array_id)
+    return array_stats_path
+
+def get_cim_array_path(array_name):
+    cim_array_path = "{0}/cim_array_{1}.txt".format(foglight.get_agent_specific_directory(), array_name)
+    return cim_array_path
 
 
 def pickle_load(filename):

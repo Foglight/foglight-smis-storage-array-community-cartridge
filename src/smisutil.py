@@ -1,13 +1,10 @@
 # coding=utf-8
 from __future__ import print_function
 
-
 import string
 import traceback
 import foglight.logging
 from smisconn import smisconn
-
-
 
 from pywbemReq.cim_obj import CIMInstanceName, CIMInstance
 from pywbemReq.cim_operations import is_subclass
@@ -134,6 +131,8 @@ def getSupportedViews(conn, ps_array, isBlockStorageViewsSupported):
         viewCaps = getViewCapabilities(conn, ps_array)
     if len(viewCaps) > 0:
         supportedViews = viewCaps[0].get("SupportedViews")
+
+    logger.info("supportedViews: {0}", supportedViews)
     return supportedViews
 
 
@@ -199,6 +198,7 @@ def getControllers(conn, ps_array):
 
         controllers.append(c)
         # print(c.tocimxml().toxml())
+    logger.info("controllers: {0}", len(controllers))
     return controllers
 
 
@@ -252,13 +252,14 @@ def getFcPorts(conn, ps_array, controllers):
 
         ports.append(p)
 
+    logger.info("fc ports: {0}", len(ports))
     return ports
 
 
 def getIscisiPorts(conn, ps_array, controllers):
-    iscisiPorts = []
+    iscsi_ports = []
     if len(controllers) <= 0:
-        return iscisiPorts
+        return iscsi_ports
 
     try:
         for ct in controllers:
@@ -268,27 +269,28 @@ def getIscisiPorts(conn, ps_array, controllers):
             if ports:
                 for p in ports:
                     p.__setitem__("ControllerName", ct.get("ElementName"))
-                iscisiPorts += ports
+                iscsi_ports += ports
     except Exception as err:
         logger.error("getIscisiPorts Error: %s" % err.message)
 
-    if len(iscisiPorts) <= 0:
-        iscisiPorts = conn.Associators(ps_array.path,
+    if len(iscsi_ports) <= 0:
+        iscsi_ports = conn.Associators(ps_array.path,
                                     AssocClass="CIM_SystemDevice",
                                     ResultClass="CIM_FCPort")
 
-        for p in iscisiPorts:
+        for p in iscsi_ports:
             p.__setitem__("ControllerName", controllers[0].get("ElementName"))
 
     _operationalStatusValues = None
-    for p in iscisiPorts:
+    for p in iscsi_ports:
         if _operationalStatusValues is None:
             _operationalStatusValues = getOperationalStatusValues(conn, ps_array, p.classname)
         if p.has_key("OperationalStatus"):
             status = convertOperationalStatusValues(p['OperationalStatus'], _operationalStatusValues)
             p.__setitem__("OperationalStatus", status)
 
-    return iscisiPorts
+    logger.info("iscsi ports: {0}", len(iscsi_ports))
+    return iscsi_ports
 
 
 def getExtents(conn, ps_array, controllers):
@@ -329,6 +331,8 @@ def getPools(conn, ps_array):
             p.__setitem__("OperationalStatus", status)
 
         pools.append(p)
+
+    logger.info("pools: {0}", len(pools))
     return pools
 
 
@@ -404,6 +408,7 @@ def getDisks(conn, ps_array, controllers, supportedViews):
             status = convertOperationalStatusValues(d['OperationalStatus'], _operationalStatusValues)
             d.__setitem__("OperationalStatus", status)
 
+    logger.info("disks: {0}", len(disks))
     return disks
 
 
@@ -525,14 +530,15 @@ def getPoolDiskMap(conn, pools, disks):
     diskExtentsMap = getDiskExtentsMap(conn, disks)
 
     poolDiskMap = {}
+    all_class_names = getClassNames(conn, conn.default_namespace, None)
+    has_disk_drive_class = {"CIM_ConcreteDependency", "CIM_DiskDrive"}.issubset(all_class_names)
     for p in pools:
         isPrimordial = p.get("Primordial")
         if isPrimordial is None:
             continue
 
         poolDisks = []
-        if hasCIMClasses(conn, p.path.namespace, {"CIM_ConcreteDependency", "CIM_DiskDrive"}):
-
+        if has_disk_drive_class:
             poolDisks = conn.AssociatorNames(p.path,
                             AssocClass="CIM_ConcreteDependency",
                             ResultClass="CIM_DiskDrive",
@@ -561,6 +567,7 @@ def getPoolDiskMap(conn, pools, disks):
 
 
 def getMaskingMappingViews(conn, array):
+    logger.info("Start to get MaskingMappingViews")
     mVolumeMappingMaskingLookup = {}
     try:
         hardwareIDMgmtServices = conn.AssociatorNames(array.path,
@@ -593,10 +600,12 @@ def getMaskingMappingViews(conn, array):
 
     except Exception, e:
         logger.error("Failed to get MaskingMappingViews: {0}", e.message)
+    logger.info("get MaskingMappingViews {0}", len(mVolumeMappingMaskingLookup))
     return mVolumeMappingMaskingLookup
 
 
 def getSCSIProtocolControllers(conn, array):
+    logger.info("Start to get SCSIProtocolControllers")
     kSCSIProtocolControllerPropList = [
         "SystemCreationClassName",
         "SystemName",
@@ -766,14 +775,12 @@ def getAssociatedEntities(entity, assocs, entities):
         objResult = None
 
         if refs[0] == entity:
-
             objResult = entities.get(refs[1].__str__())
             if objResult is not None:
                 found = True
 
         if not found:
             if refs[1] == entity:
-
                 objResult = entities.get(refs[0].__str__())
                 if objResult is not None:
                     found = True
@@ -783,88 +790,124 @@ def getAssociatedEntities(entity, assocs, entities):
 
     return result
 
+def getAllControllerStatistics(conn, controllers, statAssociations, statObjectMap):
+    controllerStats = []
+    for c in controllers:
+        controllerStat = getControllerStatistics(conn, c, statAssociations, statObjectMap)
+        if len(controllerStat) > 0:
+            controllerStats += controllerStat
+    logger.debug("controllerStatistics: {0}", len(controllerStats))
+    return controllerStats
 
 def getControllerStatistics(conn, controller, statAssociations, statObjectMap):
-    controllerStat = getAssociatedStatistics(conn, controller.path, statAssociations, statObjectMap)
-    # print("controllerStat", controllerStat)
+    controller_stat = getAssociatedStatistics(conn, controller.path, statAssociations, statObjectMap)
+    # print("controller_stat", controller_stat)
 
-    if controllerStat is None or len(controllerStat) <= 0:
+    if controller_stat is None or len(controller_stat) <= 0:
         try:
-            controllerStat = getStorageStatisticsData(conn, controller.path)
+            controller_stat = getStorageStatisticsData(conn, controller.path)
         except:
             pass
 
-    if len(controllerStat) > 0:
-        controllerStat[0].__setitem__("statID", controller["ElementName"].upper())
-        controllerStat[0].__setitem__("OperationalStatus", controller["OperationalStatus"])
-    return controllerStat
+    if len(controller_stat) > 0:
+        controller_stat[0].__setitem__("statID", controller["ElementName"].upper())
+        controller_stat[0].__setitem__("OperationalStatus", controller["OperationalStatus"])
+    return controller_stat
 
+
+def getAllPortStatistics(conn, ports, statAssociations, statObjectMap):
+    fcPortStats = []
+    for p in ports:
+        portStat = getPortStatistics(conn, p, statAssociations, statObjectMap)
+        if len(portStat) > 0:
+            fcPortStats += portStat
+    return fcPortStats
 
 def getPortStatistics(conn, port, statAssociations, statObjectMap):
-    portStat = getAssociatedStatistics(conn, port.path, statAssociations, statObjectMap)
+    port_stat = getAssociatedStatistics(conn, port.path, statAssociations, statObjectMap)
 
-    if portStat is None or len(portStat) <= 0:
+    if port_stat is None or len(port_stat) <= 0:
         # print("port.path: ", port.path)
-        portStat = getStorageStatisticsData(conn, port.path)
+        port_stat = getStorageStatisticsData(conn, port.path)
 
-    if len(portStat) > 0:
-        portStat[0].__setitem__("statID", port["PermanentAddress"])
-        portStat[0].__setitem__("OperationalStatus", port["OperationalStatus"])
-        portStat[0].__setitem__("Speed", port["Speed"])
+    if len(port_stat) > 0:
+        port_stat[0].__setitem__("statID", port["PermanentAddress"])
+        port_stat[0].__setitem__("OperationalStatus", port["OperationalStatus"])
+        port_stat[0].__setitem__("Speed", port["Speed"])
         if port.has_key("MaxSpeed"):
-            portStat[0].__setitem__("MaxSpeed", port["MaxSpeed"])
-    return portStat
+            port_stat[0].__setitem__("MaxSpeed", port["MaxSpeed"])
+    return port_stat
 
+
+def getAllDiskStatistics(conn, disks, statAssociations, statObjectMap, class_names):
+    diskStats = []
+    isMediaPresent = {"CIM_MediaPresent", "CIM_StorageExtent"}.issubset(class_names)
+    for d in disks:
+        diskStat = getDiskStatistics(conn, d, statAssociations, statObjectMap, isMediaPresent)
+        if len(diskStat) > 0:
+            diskStats += diskStat
+    logger.info("diskStats: {0}", len(diskStats))
+    return diskStats
 
 def getDiskStatistics(conn, disk, statAssociations, statObjectMap, isMediaPresent):
-    diskStat = []
-    onMedia = False     #TODO if stats for disks are associated with the media on this SMI provider
+    disk_stat = []
+    on_media = False     #TODO if stats for disks are associated with the media on this SMI provider
 
-    if not onMedia:
-        diskStat = getAssociatedStatistics(conn, disk.path, statAssociations, statObjectMap)
-        if diskStat is None or len(diskStat) <= 0:
-            diskStat = getStorageStatisticsData(conn, disk.path)
+    if not on_media:
+        disk_stat = getAssociatedStatistics(conn, disk.path, statAssociations, statObjectMap)
+        if disk_stat is None or len(disk_stat) <= 0:
+            disk_stat = getStorageStatisticsData(conn, disk.path)
 
-    if diskStat is None or len(diskStat) <= 0:
+    if disk_stat is None or len(disk_stat) <= 0:
         medias = []
         if isMediaPresent:
             medias = conn.AssociatorNames(disk.path,
                                       AssocClass="CIM_MediaPresent",
                                       ResultClass="CIM_StorageExtent")
         if len(medias) > 0:
-            diskStat = getAssociatedStatistics(conn, medias[0], statAssociations, statObjectMap)
-            if diskStat is None or len(diskStat) <= 0:
-                diskStat = getStorageStatisticsData(conn, medias[0])
+            disk_stat = getAssociatedStatistics(conn, medias[0], statAssociations, statObjectMap)
+            if disk_stat is None or len(disk_stat) <= 0:
+                disk_stat = getStorageStatisticsData(conn, medias[0])
 
-    if len(diskStat) > 0:
-        diskStat[0].__setitem__("statID", disk["DeviceID"].upper())
-        diskStat[0].__setitem__("OperationalStatus", disk["OperationalStatus"])
-    return diskStat
+    if len(disk_stat) > 0:
+        disk_stat[0].__setitem__("statID", disk["DeviceID"].upper())
+        disk_stat[0].__setitem__("OperationalStatus", disk["OperationalStatus"])
+    return disk_stat
+
+
+def getAllVolumeStatistics(conn, volumes, statAssociations, statObjectMap):
+    volumeStats = []
+    for v in volumes:
+        volumeStat = getVolumeStatistics(conn, v, statAssociations, statObjectMap)
+        if len(volumeStat) > 0:
+            volumeStats += volumeStat
+    logger.info("volumeStats: {0}", len(volumeStats))
+    return volumeStats
 
 
 def getVolumeStatistics(conn, volume, statAssociations, statObjectMap):
-    volumeStat = getAssociatedStatistics(conn, volume.path, statAssociations, statObjectMap)
+    volume_stat = getAssociatedStatistics(conn, volume.path, statAssociations, statObjectMap)
 
-    if volumeStat is None or len(volumeStat) <= 0:
-        volumeStat = []
+    if volume_stat is None or len(volume_stat) <= 0:
+        volume_stat = []
         for i in range(1,1):
             try:
-                volumeStat = conn.Associators(volume.path,
+                volume_stat = conn.Associators(volume.path,
                                       AssocClass="CIM_ElementStatisticalData",
                                       ResultClass="CIM_BlockStorageStatisticalData")
                 break
             except Exception,e:
                 pass
 
-    if len(volumeStat) > 0:
-        volumeStat[0].__setitem__("uuid", volume["Name"])
-        volumeStat[0].__setitem__("statID", volume["DeviceID"])
-        volumeStat[0].__setitem__("OperationalStatus", volume["OperationalStatus"])
-        volumeStat[0].__setitem__("BlockSize", volume["BlockSize"])
-        volumeStat[0].__setitem__("ConsumableBlocks", volume["ConsumableBlocks"])
-        volumeStat[0].__setitem__("NumberOfBlocks", volume["NumberOfBlocks"])
+    if len(volume_stat) > 0:
+        volume_stat[0].__setitem__("uuid", volume["Name"])
+        volume_stat[0].__setitem__("statID", volume["DeviceID"])
+        volume_stat[0].__setitem__("OperationalStatus", volume["OperationalStatus"])
+        volume_stat[0].__setitem__("BlockSize", volume["BlockSize"])
+        volume_stat[0].__setitem__("ConsumableBlocks", volume["ConsumableBlocks"])
+        volume_stat[0].__setitem__("NumberOfBlocks", volume["NumberOfBlocks"])
 
-    return volumeStat
+    return volume_stat
 
 
 def getStorageStatisticsData(conn, path):
@@ -885,29 +928,30 @@ def getAssociatedStatistics(conn, path, statAssociations, statDataMap):
 
 
 def getStatObjectMap(conn, NAMESPACE):
-    statObjectMap = {}
+    stat_object_map = {}
     try:
         statObjects = conn.EnumerateInstances("CIM_BlockStorageStatisticalData",
                                             namespace=NAMESPACE, DeepInheritance=True)
 
         for d in statObjects:
-            statObjectMap[d.path] = d
+            stat_object_map[d.path] = d
     except Exception, e:
         logger.error("trying to get statistical data found exception {1}", traceback.format_exc())
 
-    return statObjectMap
+    logger.info("len(statDatas): {0}", len(stat_object_map))
+    return stat_object_map
 
 
 def getStatAssociations(conn, NAMESPACE):
-    statAssociations = {}
+    stat_associations = {}
     try:
-        statAssociations = conn.EnumerateInstances("CIM_ElementStatisticalData",
+        stat_associations = conn.EnumerateInstances("CIM_ElementStatisticalData",
                                     namespace=NAMESPACE, DeepInheritance=True)
     except Exception, e:
         logger.error("trying to get statistical data association found exception {1}", traceback.format_exc())
 
-    return statAssociations
-
+    logger.info("len(statAssociations): {0}", len(stat_associations))
+    return stat_associations
 
 def getClassNames(conn, NAMESPACE, filter):
     classNames = conn.EnumerateClassNames(namespace=NAMESPACE, DeepInheritance=True)
@@ -925,17 +969,12 @@ def getBlockStorageViewsSupported(conn):
     subprofiles = [s for s in subprofiles if s.get("RegisteredName") == 'Block Storage Views']
 
     isBlockStorageViewsSupported = len(profiles) > 0 or len(subprofiles) > 0
+    logger.info("isBlockStorageViewsSupported: {0}", isBlockStorageViewsSupported)
     return isBlockStorageViewsSupported
 
 
 def hasStatisticalDataClass(conn, __namespace, all_class_names):
     return {"CIM_ElementStatisticalData", "CIM_BlockStorageStatisticalData"}.issubset(all_class_names)
-
-
-def hasCIMClasses(conn, __namespace, classNames):
-    CLASS_NAMES = getClassNames(conn, __namespace, None)
-    return classNames.issubset(CLASS_NAMES)
-
 
 def getStatsCapabilities(conn, array):
     statsService = conn.AssociatorNames(array.path,
@@ -968,6 +1007,7 @@ def detectInteropNamespace(conn):
                   "root/eternus", "root/hitachi/smis", "root/smis/current",
                   "root/hitachi/dm55", "root/hitachi/dm42", "root/hpmsa", "root/ema",
                   "root/tpd", "root/emc", "root/eva", "root/ibm", "root/hpq", "root")
+    is_first = True
     for np in namespaces:
         conn.default_namespace = np
         try:
@@ -977,5 +1017,8 @@ def detectInteropNamespace(conn):
                 break
         except Exception, e:
             logger.warn("trying namespace {0} found exception {1}", np, e.message)
+            if is_first:
+                is_first = False
+                print(traceback.format_stack())
 
     logger.info("found the interop namespace, current namespace is {0}", conn.default_namespace)

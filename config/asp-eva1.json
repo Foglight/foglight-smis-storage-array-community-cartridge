@@ -1,6 +1,6 @@
 {
-  "host"     : "10.6.151.20",
-  "port"     : "5989",
+  "host"     : "10.6.152.11",
+  "port"     : "5988",
   "username" : "vtest",
   "password" : "Password1"
 }

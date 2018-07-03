@@ -66,27 +66,14 @@ def collect_inventory(conn, tracker):
         # for dv in diskDrives:
         #     print("driveView", dv.tomof())
 
-
         isBlockStorageViewsSupported = getBlockStorageViewsSupported(conn)
-        logger.info("isBlockStorageViewsSupported: {0}", isBlockStorageViewsSupported)
-
         supportedViews = getSupportedViews(conn, ps_array, isBlockStorageViewsSupported)
-        logger.info("supportedViews: {0}", supportedViews)
 
         controllers = getControllers(conn, ps_array)
-        logger.info("controllers: {0}", len(controllers))
-
         fcPorts = getFcPorts(conn, ps_array, controllers)
-        logger.info("fc ports: {0}", len(fcPorts))
-
         iscsiPorts = getIscisiPorts(conn, ps_array, controllers)
-        logger.info("iscsi ports: {0}", len(iscsiPorts))
-
         pools = getPools(conn, ps_array)
-        logger.info("pools: {0}", len(pools))
-
         disks = getDisks(conn, ps_array, controllers, supportedViews)
-        logger.info("disks: {0}", len(disks))
 
         poolVolumeMap = getPoolVolumesMap(conn, ps_array, pools, supportedViews)
         volumes = [y for x in poolVolumeMap.values() for y in x]
@@ -126,11 +113,11 @@ def collect_inventory(conn, tracker):
         if volumes:
             logger.debug("volumes[0]: {0}", volumes[0].tomof())
 
-        maskingMappingViews = getMaskingMappingViews(conn, ps_array)
-        if maskingMappingViews is None or len(maskingMappingViews) < 1:
-            _itl_start = timer()
-            volumeMappingSPCs = getSCSIProtocolControllers(conn, ps_array)
-            logger.info("Retrieve SCSIProtocolControllers in %d seconds" % round(timer() - _itl_start))
+        # maskingMappingViews = getMaskingMappingViews(conn, ps_array)
+        # if maskingMappingViews is None or len(maskingMappingViews) < 1:
+        _itl_start = timer()
+        volumeMappingSPCs = getSCSIProtocolControllers(conn, ps_array)
+        logger.info("Retrieve SCSIProtocolControllers in %d seconds" % round(timer() - _itl_start))
 
         array_inventory = {'ps_array': ps_array,
                           'controllers': controllers, 'fcPorts': fcPorts, 'iscsiPorts': iscsiPorts,
@@ -138,8 +125,7 @@ def collect_inventory(conn, tracker):
                            'poolVolumeMap': poolVolumeMap, 'volumeMappingSPCs': volumeMappingSPCs}
         inventories.append(array_inventory)
 
-        cim_array_path = "{0}/cim_array_{1}.txt".format(foglight.get_agent_specific_directory(),
-                                                        ps_array.get("ElementName"))
+        cim_array_path = get_cim_array_path(ps_array.get("ElementName"))
         pickle_dump(cim_array_path, array_inventory)
 
     update = None
@@ -182,22 +168,12 @@ def collect_performance(conn, tracker):
         if not hasStatisticalDataClass(conn, __namespace, __CLASS_NAMES):
             continue
 
-        # for cl in clns:
-        #     print(cl)
-
         statObjectMap = getStatObjectMap(conn, __namespace)
         statAssociations = getStatAssociations(conn, __namespace)
-        logger.info("len(statDatas): {0}", len(statObjectMap))
-        logger.info("len(statAssociations): {0}", len(statAssociations))
+        # isBlockStorageViewsSupported = getBlockStorageViewsSupported(conn)
+        # supportedViews = getSupportedViews(conn, ps_array, isBlockStorageViewsSupported)
 
-        isBlockStorageViewsSupported = getBlockStorageViewsSupported(conn)
-        logger.info("isBlockStorageViewsSupported: {0}", isBlockStorageViewsSupported)
-
-        supportedViews = getSupportedViews(conn, ps_array, isBlockStorageViewsSupported)
-        logger.info("supportedViews: {0}", supportedViews)
-
-        cim_array_path = "{0}/cim_array_{1}.txt".format(foglight.get_agent_specific_directory(),
-                                                        ps_array.get("ElementName"))
+        cim_array_path = get_cim_array_path(ps_array.get("ElementName"))
         cim_array_inventory = pickle_load(cim_array_path)
 
         # controllers = getControllers(conn, ps_array
@@ -231,41 +207,14 @@ def collect_performance(conn, tracker):
         #     print(assoc.get("ManagedElement"))
         #     print(assoc.get("Stats"))
 
-        controllerStats = []
-        for c in controllers:
-            controllerStat = getControllerStatistics(conn, c, statAssociations, statObjectMap)
-            if len(controllerStat) > 0:
-                controllerStats += controllerStat
-        logger.debug("controllerStatistics: {0}", len(controllerStats))
-
-        fcPortStats = []
-        for p in fcPorts:
-            portStat = getPortStatistics(conn, p, statAssociations, statObjectMap)
-            if len(portStat) > 0:
-                fcPortStats += portStat
+        controllerStats = getAllControllerStatistics(conn, controllers, statAssociations, statObjectMap)
+        fcPortStats = getAllPortStatistics(conn, fcPorts, statAssociations, statObjectMap)
         logger.debug("fcPortStats: {0}", len(fcPortStats))
-
-        iscsiPortStats = []
-        for p in iscsiPorts:
-            portStat = getPortStatistics(conn, p, statAssociations, statObjectMap)
-            if len(portStat) > 0:
-                iscsiPortStats += portStat
+        iscsiPortStats = getAllPortStatistics(conn, iscsiPorts, statAssociations, statObjectMap)
         logger.info("iscsiPortStats: {0}", len(iscsiPortStats))
+        volumeStats = getAllVolumeStatistics(conn, volumes, statAssociations, statObjectMap)
+        diskStats = getAllDiskStatistics(conn, disks, statAssociations, statObjectMap, __CLASS_NAMES)
 
-        volumeStats = []
-        for v in volumes:
-            volumeStat = getVolumeStatistics(conn, v, statAssociations, statObjectMap)
-            if len(volumeStat) > 0:
-                volumeStats += volumeStat
-        logger.info("volumeStats: {0}", len(volumeStats))
-
-        diskStats = []
-        isMediaPresent = {"CIM_MediaPresent", "CIM_StorageExtent"}.issubset(__CLASS_NAMES)
-        for d in disks:
-            diskStat = getDiskStatistics(conn, d, statAssociations, statObjectMap, isMediaPresent)
-            if len(diskStat) > 0:
-                diskStats += diskStat
-        logger.info("diskStats: {0}", len(diskStats))
 
         if len(controllerStats) > 0:
             logger.debug("controllerStatistics: {0}", controllerStats[0].tomof())
@@ -362,22 +311,6 @@ def getServerUrl(host, port):
         url = 'https://'
     url += host + ':' + port
     return url
-
-def pickle_load(filename):
-    f = None
-    try:
-        f = open(filename, 'rb')
-        return pickle.load(f)
-    except(IOError,EOFError):
-        return None
-    finally:
-        if f:
-            f.close()
-
-def pickle_dump(filename, obj):
-    f = open(filename, 'wb')
-    pickle.dump(obj, f)
-    f.close()
 
 
 def debug(*args):
