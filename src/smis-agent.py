@@ -176,6 +176,10 @@ def collect_performance(conn, tracker):
         cim_array_path = get_cim_array_path(ps_array.get("ElementName"))
         cim_array_inventory = pickle_load(cim_array_path)
 
+        if cim_array_inventory is None:
+            tracker.request_inventory()
+            return
+
         # controllers = getControllers(conn, ps_array
         controllers = cim_array_inventory['controllers']
         logger.info("controllers: {0}", len(controllers))

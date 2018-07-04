@@ -922,8 +922,10 @@ def getStorageStatisticsData(conn, path):
 
 def getAssociatedStatistics(conn, path, statAssociations, statDataMap):
     for assoc in statAssociations:
-        if assoc.get("ManagedElement") == path:
-            return statDataMap.get(assoc.get("Stats"))
+        managed_element = assoc.get("ManagedElement")
+        stats = assoc.get("Stats")
+        if managed_element == path:
+            return [statDataMap.get(stats["InstanceID"])]
     return []
 
 
@@ -934,7 +936,7 @@ def getStatObjectMap(conn, NAMESPACE):
                                             namespace=NAMESPACE, DeepInheritance=True)
 
         for d in statObjects:
-            stat_object_map[d.path] = d
+            stat_object_map[d.path["InstanceID"]] = d
     except Exception, e:
         logger.error("trying to get statistical data found exception {1}", traceback.format_exc())
 
@@ -1006,7 +1008,7 @@ def detectInteropNamespace(conn):
     namespaces = ("interop", "root/interop", "pg_interop", "root/pg_interop", "root/cimv2",
                   "root/eternus", "root/hitachi/smis", "root/smis/current",
                   "root/hitachi/dm55", "root/hitachi/dm42", "root/hpmsa", "root/ema",
-                  "root/tpd", "root/emc", "root/eva", "root/ibm", "root/hpq", "root")
+                  "root/tpd", "root/emc", "root/eva", "root/ibm", "root/hpq", "purestorage", "root")
     is_first = True
     for np in namespaces:
         conn.default_namespace = np

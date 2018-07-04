@@ -257,8 +257,8 @@ def processITLs(array, cim_volumeMappingSPCs, volumeStats):
 
             if pcfusLen == 0 or portsLen == 0: continue
 
-            logger.debug("get mapping to LUN {0}, pcfus: {1}, ports: {2}, storHardwareIDs: {3}",
-                         volumePath, pcfusLen, portsLen, hardwareIdsLen)
+            # logger.debug("get mapping to LUN {0}, pcfus: {1}, ports: {2}, storHardwareIDs: {3}",
+            #              volumePath, pcfusLen, portsLen, hardwareIdsLen)
 
             for pcfu in pcfus:
                 deviceNumber = long(pcfu.get("DeviceNumber"), 16)
@@ -270,8 +270,7 @@ def processITLs(array, cim_volumeMappingSPCs, volumeStats):
                     portType = 'FC' if port.get("CreationClassName").lower().endswith("fcport") else "ISCSI"
 
                     itl0_devicePath = volumeDeviceIdUUIdMap[lunId]
-                    logger.debug("get ITL0 lunId: {0}, devicePath: {1}",
-                                 lunId, itl0_devicePath)
+                    # logger.debug("get ITL0 lunId: {0}, devicePath: {1}", lunId, itl0_devicePath)
 
                     itl0Key = itl0_devicePath
                     if not itl0s.__contains__(itl0Key):
@@ -287,8 +286,8 @@ def processITLs(array, cim_volumeMappingSPCs, volumeStats):
                         storageId = hardwareId.get("StorageID").lower()
                         devicePath = "%s\t%s:%s" % (storageId, portwwn, deviceNumber)
 
-                        logger.debug("get ITL1 lunId: {0}, portwwn: {1}， devicePath: {2}",
-                                     lunId, portwwn, devicePath)
+                        # logger.debug("get ITL1 lunId: {0}, portwwn: {1}， devicePath: {2}",
+                        #              lunId, portwwn, devicePath)
 
                         itl1Key = lunId +devicePath
                         if not itl1s.__contains__(itl1Key):
@@ -899,6 +898,9 @@ def __getDuration(stat, lastStat):
     if stat is not None and lastStat is not None:
         st1 = stat.get("StatisticTime")
         st0 = lastStat.get("StatisticTime")
+
+        if st1 is None or st0 is None:
+            return 3000
 
         if isinstance(st1, basestring):
             d1 = __str2datetime(st1)
