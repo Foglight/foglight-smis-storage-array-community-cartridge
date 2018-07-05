@@ -231,6 +231,11 @@ def getFcPorts(conn, ps_array, controllers):
         for p in fc_ports:
             p.__setitem__("ControllerName", controllers[0].get("ElementName"))
 
+    if len(fc_ports) <= 0 and len(controllers) > 0:
+        fc_ports = conn.EnumerateInstances("CIM_FCPort", namespace=ps_array.path.namespace)
+        for p in fc_ports:
+            p.__setitem__("ControllerName", p["SystemName"])
+
     ports = []
     _operationalStatusValues = None
     for p in fc_ports:
@@ -276,7 +281,7 @@ def getIscisiPorts(conn, ps_array, controllers):
     if len(iscsi_ports) <= 0:
         iscsi_ports = conn.Associators(ps_array.path,
                                     AssocClass="CIM_SystemDevice",
-                                    ResultClass="CIM_FCPort")
+                                    ResultClass="CIM_iSCSIProtocolEndpoint")
 
         for p in iscsi_ports:
             p.__setitem__("ControllerName", controllers[0].get("ElementName"))
@@ -925,7 +930,19 @@ def getAssociatedStatistics(conn, path, statAssociations, statDataMap):
         managed_element = assoc.get("ManagedElement")
         stats = assoc.get("Stats")
         if managed_element == path:
-            return [statDataMap.get(stats["InstanceID"])]
+            stats_val = None
+            if stats.has_key("InstanceID"):
+                stats_val = statDataMap.get(stats["InstanceID"])
+            if stats_val is None:
+                for v in statDataMap.values():
+                    if v.has_key("ElementName") and managed_element.has_key("DeviceID")\
+                            and v["ElementName"] == managed_element["DeviceID"]:
+                        stats_val = v
+                        break
+
+            if stats_val is not None: return [stats_val]
+
+            # return [statDataMap.get(stats["InstanceID"])]
     return []
 
 
@@ -936,7 +953,8 @@ def getStatObjectMap(conn, NAMESPACE):
                                             namespace=NAMESPACE, DeepInheritance=True)
 
         for d in statObjects:
-            stat_object_map[d.path["InstanceID"]] = d
+            stat_object_map[d["InstanceID"]] = d
+            # print(d.path["InstanceID"])
     except Exception, e:
         logger.error("trying to get statistical data found exception {1}", traceback.format_exc())
 
@@ -1005,7 +1023,7 @@ def getStatsCapabilities(conn, array):
     return statsCaps[0]
 
 def detectInteropNamespace(conn):
-    namespaces = ("interop", "root/interop", "pg_interop", "root/pg_interop", "root/cimv2",
+    namespaces = ("interop", "root/interop", "pg_interop", "root/pg_interop", "root/cimv2", "root/compellent",
                   "root/eternus", "root/hitachi/smis", "root/smis/current",
                   "root/hitachi/dm55", "root/hitachi/dm42", "root/hpmsa", "root/ema",
                   "root/tpd", "root/emc", "root/eva", "root/ibm", "root/hpq", "purestorage", "root")
@@ -1021,6 +1039,6 @@ def detectInteropNamespace(conn):
             logger.warn("trying namespace {0} found exception {1}", np, e.message)
             if is_first:
                 is_first = False
-                print(traceback.format_stack())
+                # traceback.print_stack()
 
     logger.info("found the interop namespace, current namespace is {0}", conn.default_namespace)

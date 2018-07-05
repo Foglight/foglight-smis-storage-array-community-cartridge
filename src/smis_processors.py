@@ -269,7 +269,10 @@ def processITLs(array, cim_volumeMappingSPCs, volumeStats):
                     portwwn = port.get("PermanentAddress").lower()
                     portType = 'FC' if port.get("CreationClassName").lower().endswith("fcport") else "ISCSI"
 
-                    itl0_devicePath = volumeDeviceIdUUIdMap[lunId]
+
+                    itl0_devicePath = None
+                    if volumeDeviceIdUUIdMap.has_key(lunId):
+                        itl0_devicePath = volumeDeviceIdUUIdMap[lunId]
                     # logger.debug("get ITL0 lunId: {0}, devicePath: {1}", lunId, itl0_devicePath)
 
                     itl0Key = itl0_devicePath

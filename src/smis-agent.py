@@ -160,6 +160,12 @@ def collect_performance(conn, tracker):
     arrays = getArrays(conn)
     performances = []
     for ps_array in arrays:
+        cim_array_path = get_cim_array_path(ps_array.get("ElementName"))
+        cim_array_inventory = pickle_load(cim_array_path)
+        if cim_array_inventory is None:
+            tracker.request_inventory()
+            return
+
         __namespace = ps_array.path.namespace
         conn.default_namespace = __namespace
         logger.info("NAMESPACE: {0}", __namespace)
@@ -172,13 +178,6 @@ def collect_performance(conn, tracker):
         statAssociations = getStatAssociations(conn, __namespace)
         # isBlockStorageViewsSupported = getBlockStorageViewsSupported(conn)
         # supportedViews = getSupportedViews(conn, ps_array, isBlockStorageViewsSupported)
-
-        cim_array_path = get_cim_array_path(ps_array.get("ElementName"))
-        cim_array_inventory = pickle_load(cim_array_path)
-
-        if cim_array_inventory is None:
-            tracker.request_inventory()
-            return
 
         # controllers = getControllers(conn, ps_array
         controllers = cim_array_inventory['controllers']
@@ -226,14 +225,12 @@ def collect_performance(conn, tracker):
             logger.debug("fcPortStatistics: {0}", fcPortStats[0].tomof())
         if len(volumeStats) > 0:
             for vs in volumeStats:
-                if vs['KBytesWritten'] > 0:
+                if vs.has_key('KBytesWritten') and vs['KBytesWritten'] > 0:
                     logger.debug("volumeStat: {0}", vs.tomof())
                     break
 
         if len(diskStats) > 0:
             logger.debug("diskStatistics: {0}", diskStats[0].tomof())
-            # for ds in diskStats:
-            #     logger.debug("diskStat: {0}", ds.tomof())
 
         statsCap = getStatsCapabilities(conn, ps_array)
         clockTickInterval = None
