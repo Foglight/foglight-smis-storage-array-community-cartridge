@@ -310,7 +310,7 @@ def getServerUrl(host, port):
     url = 'http://'
     if port == "5989":
         url = 'https://'
-    url += host + ':' + port
+    url += host + ':' + port + "/cimom"
     return url
 
 
