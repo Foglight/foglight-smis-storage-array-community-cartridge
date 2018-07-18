@@ -953,10 +953,13 @@ def getStatObjectMap(conn, NAMESPACE):
                                             namespace=NAMESPACE, DeepInheritance=True)
 
         for d in statObjects:
-            stat_object_map[d["InstanceID"]] = d
+            if d.has_key("InstanceID"):
+                stat_object_map[d["InstanceID"]] = d
+            elif d.path.has_key("InstanceID"):
+                stat_object_map[d.path["InstanceID"]] = d
             # print(d.path["InstanceID"])
     except Exception, e:
-        logger.error("trying to get statistical data found exception {1}", traceback.format_exc())
+        logger.error("trying to get statistical data found exception {0}", traceback.format_exc())
 
     logger.info("len(statDatas): {0}", len(stat_object_map))
     return stat_object_map
@@ -968,7 +971,7 @@ def getStatAssociations(conn, NAMESPACE):
         stat_associations = conn.EnumerateInstances("CIM_ElementStatisticalData",
                                     namespace=NAMESPACE, DeepInheritance=True)
     except Exception, e:
-        logger.error("trying to get statistical data association found exception {1}", traceback.format_exc())
+        logger.error("trying to get statistical data association found exception {0}", traceback.format_exc())
 
     logger.info("len(statAssociations): {0}", len(stat_associations))
     return stat_associations
