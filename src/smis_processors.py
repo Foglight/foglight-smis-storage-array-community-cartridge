@@ -418,7 +418,9 @@ def processFcPortStats(array, fcPortStats, lastStats, _tracker):
                 continue
 
             currentSpeed = pStat.get("Speed") / 1024 / 1024
-            maxSpeed = pStat.get("MaxSpeed") / 1024 / 1024
+            maxSpeed = 0
+            if pStat.get("MaxSpeed") is not None:
+                maxSpeed= pStat.get("MaxSpeed") / 1024 / 1024
 
             port.set_metric("currentSpeedMb", currentSpeed)
             port.set_metric("maxSpeedMb", maxSpeed)
@@ -694,6 +696,9 @@ def processPoolStats(array, poolVolumeMap, cim_pools):
             pool.set_metric("conf_available", remainingSpace >> 20)
             pool.set_metric("raw_available", remainingSpace >> 20)
 
+        # state = str(convertCIMOperationalStatus(cim_pool.get("OperationalStatus")))
+        # pool.set_state(state)
+
     return None
 
 def findPoolByID(pools, poolID):
@@ -919,6 +924,9 @@ def __getDuration(stat, lastStat):
         if None != d1 and None != d0:
             durationInt = (d1 - d0).seconds
         else:
+            durationInt = 300
+
+        if durationInt == 0:
             durationInt = 300
     #TODO collection interval
 
