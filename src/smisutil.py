@@ -32,9 +32,9 @@ def getElementsForProfile(conn, profileName):
         for managedElement in managedElements:
             if managedElement.get("ElementName") is None or managedElement.get("ElementName") == "":
                 logger.debug("managedElement: {0}", managedElement.tomof())
-                if managedElement.get("Name") is not None:
+                if managedElement.get("Name") is not None and managedElement.get("Name") != "":
                     managedElement.__setitem__("ElementName", managedElement.get("Name"))
-                if managedElement.get("RegisteredName") is not None:
+                elif managedElement.get("RegisteredName") is not None and managedElement.get("RegisteredName") != "":
                     managedElement.__setitem__("ElementName", managedElement.get("RegisteredName"))
             elements.append(managedElement)
     return elements
