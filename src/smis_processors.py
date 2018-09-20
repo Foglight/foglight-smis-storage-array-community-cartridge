@@ -115,8 +115,8 @@ def processVolumes(array, cim_volumes, poolsMap):
 
             isThinProvisioned = False
             if (v.has_key("ThinlyProvisioned")):
-                isThinProvisioned = bool(v["ThinlyProvisioned"])
-                lun.set_property("isThinProvisioned", isThinProvisioned)
+                isThinProvisioned = str(v["ThinlyProvisioned"])
+                lun.set_property("isThinProvisioned", isThinProvisioned == 'True')
 
             blockSize = 0 if not v.has_key("BlockSize") else v["BlockSize"]
             consumableBlocks = v["ConsumableBlocks"]

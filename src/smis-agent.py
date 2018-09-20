@@ -75,7 +75,10 @@ def collect_inventory(conn, tracker):
         pools = getPools(conn, ps_array)
         disks = getDisks(conn, ps_array, controllers, supportedViews)
 
-        poolVolumeMap = getPoolVolumesMap(conn, ps_array, pools, supportedViews)
+        extents = getExtents(conn, ps_array, controllers)
+        logger.debug("extents: {0}", len(extents))
+
+        poolVolumeMap = getPoolVolumesMap(conn, ps_array, pools, supportedViews, extents)
         volumes = [y for x in poolVolumeMap.values() for y in x]
         logger.info("volumes: {0}", len(volumes))
 
@@ -88,12 +91,6 @@ def collect_inventory(conn, tracker):
 
             poolVolumes = poolVolumeMap.get(k)
             logger.debug('%s disks: %d, volumes: %d' % (k, len(poolDiskPaths), len(poolVolumes) if poolVolumes else 0))
-
-        # extents = getExtents(conn, ps_array, controllers)
-        # debug("extents: ", len(extents))
-        # if extents:
-        #     for e in extents.values():
-        #         print('extent:', e.tomof())
 
         # getDiskExtents getDiskToVolumeAssociation
         # print("extents: ", len(extents))

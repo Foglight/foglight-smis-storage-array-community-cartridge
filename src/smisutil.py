@@ -6,7 +6,7 @@ import traceback
 import foglight.logging
 from smisconn import smisconn
 
-from pywbemReq.cim_obj import CIMInstanceName, CIMInstance
+from pywbemReq.cim_obj import CIMInstanceName, CIMInstance, tocimobj
 from pywbemReq.cim_operations import is_subclass
 from pywbemReq.cim_types import *
 
@@ -316,7 +316,7 @@ def getExtents(conn, ps_array, controllers):
     extentLookup = {}
     for extent in extents:
         if extent.has_key("DeviceID"):
-            extentLookup[extent.path] = extent
+            extentLookup[extent.get("DeviceID")] = extent
     return extentLookup
 
 
@@ -511,7 +511,7 @@ def __getVolumesFromPools(conn, pools):
     return pool_volume_map
 
 
-def getPoolVolumesMap(conn, ps_array, pools, supportedViews):
+def getPoolVolumesMap(conn, ps_array, pools, supportedViews, extents):
     poolVolumeMap = {}
     # Do not allow VolumeViews for Hitachi - they do not provide the necessary attributes in the VolumeView class:
     # specifically "ThinlyProvisioned" and "IsComposite"
@@ -532,6 +532,14 @@ def getPoolVolumesMap(conn, ps_array, pools, supportedViews):
             if volume.has_key("OperationalStatus"):
                 status = convertOperationalStatusValues(volume['OperationalStatus'], _operationalStatusValues)
                 volume.__setitem__("OperationalStatus", status)
+
+            deviceId = volume["DeviceID"]
+            if extents.has_key(deviceId):
+                extent = extents.get(deviceId)
+                if extent.has_key("EMCRaidLevel"):
+                    volume.__setitem__("RaidLevel", extent.get("EMCRaidLevel"))
+                if extent.has_key("ThinlyProvisioned"):
+                    volume.__setitem__("ThinlyProvisioned", str(extent["ThinlyProvisioned"]))
 
     return poolVolumeMap
 
