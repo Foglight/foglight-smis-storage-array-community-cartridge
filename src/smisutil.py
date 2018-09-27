@@ -848,13 +848,27 @@ def getPortStatistics(conn, port, statAssociations, statObjectMap):
         port_stat = getStorageStatisticsData(conn, port.path)
 
     if len(port_stat) > 0:
-        port_stat[0].__setitem__("statID", port["PermanentAddress"])
+        port_stat[0].__setitem__("statID", _get_state_id(port))
         port_stat[0].__setitem__("OperationalStatus", port["OperationalStatus"])
         port_stat[0].__setitem__("Speed", port["Speed"])
         if port.has_key("MaxSpeed"):
             port_stat[0].__setitem__("MaxSpeed", port["MaxSpeed"])
+
     return port_stat
 
+def _get_state_id(port):
+    stat_id = None
+    if port.has_key("PermanentAddress"):
+        stat_id = port["PermanentAddress"]
+    else:
+        wwn = port["Name"]
+        if wwn is not None:
+            comma = wwn.index(',')
+            if 0 < comma:
+                wwn = wwn[0:comma]
+            stat_id = wwn
+    logger.debug("port {0}", stat_id)
+    return stat_id
 
 def getAllDiskStatistics(conn, disks, statAssociations, statObjectMap, class_names):
     diskStats = []

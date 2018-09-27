@@ -71,15 +71,27 @@ def processFcPorts(array, cim_fcPorts):
 
 def processIscsiPorts(array, cim_iscsiPorts):
     for p in cim_iscsiPorts:
-        wwn = p.get("PermanentAddress")
-        if wwn is None: continue
+
+        wwn = p.get("Name")
+        if wwn is None:
+            logger.warn("ISCSI Port name is None")
+            continue
+
+        comma = wwn.index(',')
+        if 0 < comma:
+            wwn = wwn[0:comma]
 
         port = array.get_port("ISCSI", wwn)
-        port.set_property("name", p["ElementName"])
+        if p["ElementName"] is not None:
+            port.set_property("name", p["ElementName"])
+        else:
+            port.set_property("name", p["Name"])
 
         controllerName = p["ControllerName"]
         controller = array.get_controller(controllerName.upper())
         port.associate_with(controller)
+
+        logger.debug("ISCSI port ", p["name"] )
     return None
 
 

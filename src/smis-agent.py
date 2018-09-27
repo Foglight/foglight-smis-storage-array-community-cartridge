@@ -133,6 +133,9 @@ def collect_inventory(conn, tracker):
         for inventory in inventories:
             submit_inventory(model, inventory)
 
+        submit_data = update.prepare_submission()
+        logger.debug("submit inventory data: {0}", submit_data.json)
+
         model.submit(inventory_frequency=inventory_frequency,
                      performance_frequency=performance_frequency)
 
