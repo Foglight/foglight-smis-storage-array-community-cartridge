@@ -332,6 +332,8 @@ def getPools(conn, ps_array):
             continue
         if p.get("Primordial") is True:
             continue
+        if p.get("Usage") == 4:
+            continue
 
         if _operationalStatusValues is None:
             _operationalStatusValues = getOperationalStatusValues(conn, ps_array, p.classname)

@@ -104,7 +104,10 @@ def collect_inventory(conn, tracker):
         if iscsiPorts:
             logger.debug("iscisiPorts[0]: {0}", iscsiPorts[0].tomof())
         if pools:
-            logger.debug("pools[0]: {0}", pools[0].tomof())
+            #logger.debug("pools[0]: {0}", pools[0].tomof())
+            for p in pools:
+                logger.debug("pool: {0}", p.tomof())
+            return
         if disks:
             logger.debug("disks: {0}", disks[0].tomof())
         if volumes:
