@@ -699,9 +699,12 @@ def processPoolStats(array, poolVolumeMap, cim_pools):
 
         cim_pool = findPoolByID(cim_pools, poolID)
 
-        totalSpace = cim_pool.get("TotalManagedSpace")
-        if None != totalSpace:
-            pool.set_metric("conf_capacity", totalSpace >> 20)
+        total_space = cim_pool.get("TotalManagedSpace")
+        if total_space is None or 0 == total_space:
+            total_space = cim_pool.get("SpaceLimit")
+
+        pool.set_metric("conf_capacity", total_space >> 20)
+
 
         remainingSpace = cim_pool.get("RemainingManagedSpace")
         if None != remainingSpace:
