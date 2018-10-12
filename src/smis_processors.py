@@ -698,18 +698,26 @@ def processPoolStats(array, poolVolumeMap, cim_pools):
         pool.set_metric("conf_LunSize", advertisedSize)
 
         cim_pool = findPoolByID(cim_pools, poolID)
+        logger.debug("pool: {0} ", cim_pool.tomof())
 
-        total_space = cim_pool.get("TotalManagedSpace")
+        total_space = 0
         if total_space is None or 0 == total_space:
-            total_space = cim_pool.get("SpaceLimit")
-
+            total_space = cim_pool.get("TotalManagedSpace")
         pool.set_metric("conf_capacity", total_space >> 20)
 
+        consumed = cim_pool.get("CurrentSpaceConsumed")
+        remaining_space = None
+        if consumed is not None and cim_pool.classname.startswith('TPD'):
+            used_admin_space = cim_pool.get("UsedSnapAdminSpace")
+            if used_admin_space is not None:
+                consumed = consumed + used_admin_space
+            remaining_space= total_space - consumed
+        else:
+            remaining_space = cim_pool.get("RemainingManagedSpace")
 
-        remainingSpace = cim_pool.get("RemainingManagedSpace")
-        if None != remainingSpace:
-            pool.set_metric("conf_available", remainingSpace >> 20)
-            pool.set_metric("raw_available", remainingSpace >> 20)
+        if None != remaining_space:
+            pool.set_metric("conf_available", remaining_space >> 20)
+            pool.set_metric("raw_available", remaining_space >> 20)
 
         # state = str(convertCIMOperationalStatus(cim_pool.get("OperationalStatus")))
         # pool.set_state(state)
