@@ -138,7 +138,7 @@ def processVolumes(array, cim_volumes, poolsMap):
                 logicalBytes = numberOfBlocks * blockSize
             else:
                 logicalBytes = consumableBlocks * blockSize
-            size = long(logicalBytes / 1024 / 1024)
+            size = logicalBytes / 1024 / 1024
             lun.set_property("size", size)
             lun.set_property("advertisedSize", size)
             # lun.set_property("rawCapacity", size)
@@ -150,8 +150,11 @@ def processVolumes(array, cim_volumes, poolsMap):
                     consumedBytes = v["ConsumedBytes"]
                 if consumedBytes > logicalBytes:
                     logger.warn("Thin SALD over-consumed {0} : {1} > {2}", v["ElementName"], consumedBytes, logicalBytes)
-                if 0 <= consumedBytes:
+                if 0 < consumedBytes:
                     lun.set_property("advertisedSize", long(consumedBytes / 1024 / 1024))
+
+            logger.debug("lun.advertisedSize : {0} lun.size : {1}",
+                         lun.get_property("advertisedSize"), lun.get_property("size"))
 
             rule = None
             if rule is None and v.has_key("RaidLevel"):
