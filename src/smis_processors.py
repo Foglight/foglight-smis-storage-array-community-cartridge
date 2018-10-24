@@ -567,6 +567,15 @@ def processVolumeStats(array, volumeStats, lastStats, _tracker, clockTickInterva
             volume.set_metric("opsWrite", opsWrite / durationInt)
             volume.set_metric("opsTotal", opsTotal / durationInt)
 
+            latency_read_hits = __getStatValue("ReadHitLatencyTime_ms", vStat, lastStat, 1)
+            latency_read_misses = __getStatValue("ReadMissLatencyTime_ms", vStat, lastStat, 1)
+            latency_read = latency_read_hits + latency_read_misses
+            latency_write = __getStatValue("WriteLatencyTime_ms", vStat, lastStat, 1)
+            latency_total = latency_read + latency_write
+            volume.set_metric("latencyWrite", latency_write)
+            volume.set_metric("latencyRead", latency_read)
+            volume.set_metric("latencyTotal", latency_total)
+
             if None != clockTickInterval and clockTickInterval > 0:
                 if clockTickInterval >= 1000000:
                     clockTickInterval = 1
