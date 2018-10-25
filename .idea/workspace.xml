@@ -6,7 +6,6 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="57031d5b-1335-4ba1-83b7-beab461b924d" name="Default" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/smis_processors.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/smis_processors.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -28,7 +27,7 @@
         <entry file="file://C:/sinba/FVE/sdk/StorageSDK/lib/fsm/storage.py">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="72">
-              <caret line="108" lean-forward="true" selection-start-line="108" selection-end-line="108" />
+              <caret line="108" selection-start-line="108" selection-end-line="108" />
             </state>
           </provider>
         </entry>
@@ -75,8 +74,8 @@
       <file leaf-file-name="smis_processors.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/smis_processors.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="549">
-              <caret line="581" lean-forward="true" selection-start-line="581" selection-end-line="581" />
+            <state relative-caret-position="377">
+              <caret line="682" lean-forward="true" selection-start-line="682" selection-end-line="682" />
               <folding>
                 <element signature="e#15#52#0" expanded="true" />
               </folding>
@@ -97,7 +96,7 @@
         <entry file="file://$PROJECT_DIR$/src/smis-agent.py">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="391">
-              <caret line="293" lean-forward="true" selection-start-line="293" selection-end-line="293" />
+              <caret line="293" selection-start-line="293" selection-end-line="293" />
             </state>
           </provider>
         </entry>
@@ -113,7 +112,7 @@
         <entry file="file://C:/sinba/FVE/sdk/StorageSDK/lib/foglight/model.py">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="360">
-              <caret line="119" lean-forward="true" selection-start-line="119" selection-end-line="119" />
+              <caret line="119" selection-start-line="119" selection-end-line="119" />
             </state>
           </provider>
         </entry>
@@ -516,14 +515,14 @@
     <frame x="-8" y="-8" width="1936" height="1056" extended-state="6" />
     <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" sideWeight="0.42416453" visible="true" weight="0.1406744" />
+      <window_info content_ui="combo" id="Project" order="0" sideWeight="0.42370892" visible="true" weight="0.1406744" />
       <window_info anchor="bottom" id="TODO" order="6" weight="0.20864865" />
       <window_info anchor="bottom" id="Event Log" order="7" sideWeight="0.14488935" side_tool="true" weight="0.40087146" />
       <window_info anchor="bottom" id="Run" order="2" sideWeight="0.49788806" weight="0.3296582" />
       <window_info anchor="bottom" id="Version Control" order="10" weight="0.3296582" />
       <window_info anchor="bottom" id="Python Console" order="8" sideWeight="0.48521647" weight="0.2264151" />
-      <window_info active="true" id="Structure" order="1" sideWeight="0.57583547" side_tool="true" visible="true" weight="0.1406744" />
-      <window_info anchor="bottom" id="Terminal" order="9" sideWeight="0.85511065" visible="true" weight="0.15250544" />
+      <window_info id="Structure" order="1" sideWeight="0.5762911" side_tool="true" visible="true" weight="0.1406744" />
+      <window_info active="true" anchor="bottom" id="Terminal" order="9" sideWeight="0.85511065" visible="true" weight="0.07189543" />
       <window_info anchor="bottom" id="Debug" order="3" weight="0.4" />
       <window_info id="Favorites" order="2" side_tool="true" weight="0.11064278" />
       <window_info anchor="right" content_ui="combo" id="Hierarchy" order="3" weight="0.25" />
@@ -895,14 +894,14 @@
     <entry file="file://$PROJECT_DIR$/src/smis-agent.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="391">
-          <caret line="293" lean-forward="true" selection-start-line="293" selection-end-line="293" />
+          <caret line="293" selection-start-line="293" selection-end-line="293" />
         </state>
       </provider>
     </entry>
     <entry file="file://C:/sinba/FVE/sdk/StorageSDK/lib/fsm/storage.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="72">
-          <caret line="108" lean-forward="true" selection-start-line="108" selection-end-line="108" />
+          <caret line="108" selection-start-line="108" selection-end-line="108" />
         </state>
       </provider>
     </entry>
@@ -914,14 +913,14 @@
     <entry file="file://C:/sinba/FVE/sdk/StorageSDK/lib/foglight/model.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="360">
-          <caret line="119" lean-forward="true" selection-start-line="119" selection-end-line="119" />
+          <caret line="119" selection-start-line="119" selection-end-line="119" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/smis_processors.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="549">
-          <caret line="581" lean-forward="true" selection-start-line="581" selection-end-line="581" />
+        <state relative-caret-position="377">
+          <caret line="682" lean-forward="true" selection-start-line="682" selection-end-line="682" />
           <folding>
             <element signature="e#15#52#0" expanded="true" />
           </folding>

@@ -674,6 +674,13 @@ def processDiskStats(array, diskStats, lastStats, _tracker, clockTickInterval):
             disk.set_metric("opsWrite", opsWrite / durationInt)
             disk.set_metric("opsTotal", opsTotal / durationInt)
 
+            latency_read = __getStatValue("ReadLatencyTime_ms", dStat, lastStat, 1)
+            latency_write = __getStatValue("WriteLatencyTime_ms", dStat, lastStat, 1)
+            latency_total = latency_read + latency_write
+            disk.set_metric("latencyWrite", latency_write)
+            disk.set_metric("latencyRead", latency_read)
+            disk.set_metric("latencyTotal", latency_total)
+
             if None != clockTickInterval and clockTickInterval > 0:
                 if clockTickInterval >= 1000000:
                     clockTickInterval = 1
