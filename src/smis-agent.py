@@ -308,9 +308,9 @@ def execute_request(server_url, creds, namespace):
             conn = None
 
 
-def getServerUrl(host, port):
+def getServerUrl(host, port, https):
     url = 'http://'
-    if port == "5989":
+    if https or port == "5989":
         url = 'https://'
     url += host + ':' + port + "/cimom"
     return url
@@ -343,7 +343,10 @@ def main():
     """ Get arguments and call the execution function"""
 
     asp = foglight.asp.get_properties()
-    server_url = getServerUrl(asp["host"], asp["port"])
+    https = None;
+    if asp.__contains__("https"):
+        https = asp["https"]
+    server_url = getServerUrl(asp["host"], asp["port"], https)
     # create the credentials tuple for WBEMConnection
 
     creds = None

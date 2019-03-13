@@ -82,16 +82,17 @@ def processIscsiPorts(array, cim_iscsiPorts):
             wwn = wwn[0:comma]
 
         port = array.get_port("ISCSI", wwn)
-        if p["ElementName"] is not None:
-            port.set_property("name", p["ElementName"])
+        if p.get("ElementName") is not None:
+            port.set_property("name", p.get("ElementName"))
         else:
-            port.set_property("name", p["Name"])
+            port.set_property("name", p.get("Name"))
 
-        controllerName = p["ControllerName"]
-        controller = array.get_controller(controllerName.upper())
-        port.associate_with(controller)
+        controller_name = p.get("ControllerName")
+        if controller_name is not None:
+            controller = array.get_controller(controller_name.upper())
+            port.associate_with(controller)
 
-        logger.debug("ISCSI port ", p["name"] )
+        logger.debug("ISCSI port ", p.get("name") )
     return None
 
 

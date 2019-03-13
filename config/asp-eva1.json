@@ -1,6 +1,7 @@
 {
   "host"     : "10.6.152.11",
   "port"     : "5988",
+  "https"    : false,
   "username" : "vtest",
   "password" : "Password1"
 }
