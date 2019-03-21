@@ -211,6 +211,7 @@ def getFcPorts(conn, ps_array, controllers):
     if len(controllers) <= 0:
         return fc_ports
 
+    empty_controllers= []
     for ct in controllers:
         try:
             ports = conn.Associators(ct.path, AssocClass="CIM_SystemDevice",
@@ -220,13 +221,15 @@ def getFcPorts(conn, ps_array, controllers):
 
             if ports is None or  len(ports) <= 0:
                 logger.warn("No FC ports found for %s using %s" % (ct.get("ElementName"),  conn) )
-                controllers.remove(ct)
+                empty_controllers.append(ct);
             else:
                 for p in ports:
                     p.__setitem__("ControllerName", ct.get("ElementName"))
                 fc_ports += ports
         except Exception as err:
             logger.error("getFcPorts Error: %s" % err.message)
+    for x in empty_controllers:
+        controllers.remove(x)
 
     if len(fc_ports) <= 0 and len(controllers) > 0:
         fc_ports = conn.Associators(ps_array.path,

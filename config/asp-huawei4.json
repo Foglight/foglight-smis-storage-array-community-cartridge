@@ -1,0 +1,7 @@
+{
+  "host"     : "182.149.132.203",
+  "port"     : "1267",
+  "https"    : true,
+  "username" : "smis_admin",
+  "password" : "Admin@12"
+}
