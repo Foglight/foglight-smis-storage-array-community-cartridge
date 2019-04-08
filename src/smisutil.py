@@ -773,14 +773,17 @@ def getSCSIProtocolControllers(conn, array):
                     spe.__setitem__("PermanentAddress", speName)
                     spc.__setitem__("spe", spe)
                 else:
-                    ports = conn.Associators(spe.path,
-                                        AssocClass="CIM_DeviceSAPImplementation",
-                                        ResultClass="CIM_NetworkPort",
-                                        PropertyList=kNetworkPortPropList)
-                    if ports is not None and len(ports) > 0:
-                        spc_ports = spc.get("ports", [])
-                        spc_ports += ports
-                        spc.__setitem__("ports", spc_ports)
+                    try:
+                        ports = conn.Associators(spe.path,
+                                            AssocClass="CIM_DeviceSAPImplementation",
+                                            ResultClass="CIM_NetworkPort",
+                                            PropertyList=kNetworkPortPropList)
+                        if ports is not None and len(ports) > 0:
+                            spc_ports = spc.get("ports", [])
+                            spc_ports += ports
+                            spc.__setitem__("ports", spc_ports)
+                    except Exception, e:
+                        logger.warn('Failed to associate {0} to ports', spe.path)
                 # print(speName, spe.tomof())
 
 

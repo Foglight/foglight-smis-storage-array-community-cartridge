@@ -276,7 +276,7 @@ def execute_request(server_url, creds, namespace):
         foglight.utils.disable_ssl_cert_checking()
 
         # Create a connection
-        conn = WBEMConnection(server_url, creds, default_namespace=namespace, verify=False, timeout=1800)
+        conn = WBEMConnection(server_url, creds, default_namespace=namespace, verify=False, timeout=30)
         logger.info("conn: {0}", conn)
         detectInteropNamespace(conn)
 
