@@ -556,7 +556,7 @@ def processVolumeStats(array, volumeStats, lastStats, _tracker, clockTickInterva
             opsWrite = __getStatValue('WriteIOs', vStat, lastStat, 1)
             opsTotal = __getStatValue('TotalIOs', vStat, lastStat, 1)
             readHitIos = __getStatValue('ReadHitIOs', vStat, lastStat, 1)
-            writeHitIos = __getStatValue('KBytesRead', vStat, lastStat, 1)
+            writeHitIos = __getStatValue('WriteHitIOs', vStat, lastStat, 1)
             totalHitIos = readHitIos + writeHitIos
 
             readIOTimeCounter = __getStatValue('ReadIOTimeCounter', vStat, lastStat, 1)

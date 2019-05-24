@@ -97,18 +97,17 @@ def getProductInfo(conn, ps_array):
     if use_chassis is None:
         return False
 
-    products = conn.Associators(use_chassis.path,
-                                AssocClass="CIM_ProductPhysicalComponent",
-                                ResultClass="CIM_Product")
-    if products is None:
-        return False
-
-
     model = use_chassis.get("Model")
     if model is not None:
         model = string.replace(model, "Rack Mounted ", "")
         model = string.replace(model, '_', '-')
         ps_array.__setitem__("Model", model)
+
+    products = conn.Associators(use_chassis.path,
+                                AssocClass="CIM_ProductPhysicalComponent",
+                                ResultClass="CIM_Product")
+    if products is None or len(products) == 0:
+        return False
 
     product = products[0]
     vendor = product.get("Vendor")
