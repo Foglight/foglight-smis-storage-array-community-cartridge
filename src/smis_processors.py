@@ -302,6 +302,7 @@ def processITLs(array, cim_volumeMappingSPCs, volumeStats):
                     if hardwareIdsLen == 0:
                         continue
                     for hardwareId in storHardwareIDs:
+                        if hardwareId.get("StorageID") is None: continue
                         storageId = hardwareId.get("StorageID").lower()
                         devicePath = "%s\t%s:%s" % (storageId, portwwn, deviceNumber)
 

@@ -227,8 +227,8 @@ def getFcPorts(conn, ps_array, controllers):
                 fc_ports += ports
         except Exception as err:
             logger.error("getFcPorts Error: %s" % err.message)
-    for x in empty_controllers:
-        controllers.remove(x)
+    # for x in empty_controllers:
+    #     controllers.remove(x)
 
     if len(fc_ports) <= 0 and len(controllers) > 0:
         fc_ports = conn.Associators(ps_array.path,

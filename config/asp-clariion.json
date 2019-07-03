@@ -1,6 +1,6 @@
 {
   "host"     : "10.6.152.30",
-  "port"     : "5988",
+  "port"     : "5989",
   "username" : "vfs\\vtest",
   "password" : "Password1"
 }
