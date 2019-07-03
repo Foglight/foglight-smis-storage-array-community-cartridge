@@ -136,7 +136,7 @@ def collect_inventory(conn, tracker):
             submit_inventory(model, inventory)
 
         submit_data = update.prepare_submission()
-        # logger.debug("submit inventory data: {0}", submit_data.json)
+        logger.info("submit inventory data: {0}", submit_data.json)
 
         model.submit(inventory_frequency=inventory_frequency,
                      performance_frequency=performance_frequency)
@@ -251,13 +251,13 @@ def collect_performance(conn, tracker):
         for performance in performances:
             submit_performance(model, performance, tracker)
 
-        # submission = update.prepare_submission().json
-        # print("submission", submission)
+        submission = update.prepare_submission().json
+        logger.info("submission {0} ", submission)
 
         model.submit(inventory_frequency=inventory_frequency,
                  performance_frequency=performance_frequency)
     except Exception:
-        print(traceback.format_exc())
+        logger.error(traceback.format_exc())
     finally:
         tracker.record_performance()
 

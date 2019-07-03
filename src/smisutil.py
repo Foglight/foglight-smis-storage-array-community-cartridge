@@ -305,9 +305,14 @@ def getIscisiPorts(conn, ps_array, controllers):
 
 
 def getExtents(conn, ps_array, controllers):
-    extents = conn.Associators(ps_array.path,
+    extents = []
+    try:
+        extents = conn.Associators(ps_array.path,
                                 AssocClass="CIM_SystemDevice",
                                 ResultClass="CIM_StorageExtent")
+    except Exception as err:
+        logger.error("Failed to get extents by array %s %s" % (ps_array.path, err.message))
+
     if len(extents) == 0:
         for ct in controllers:
             extentComps = conn.Associators(ct.path,
@@ -504,7 +509,7 @@ def __getVolumesFromPools(conn, pools):
                             AssocClass="CIM_AllocatedFromStoragePool",
                             ResultClass="CIM_StorageVolume")
         except Exception as e:
-            logger.error(traceback.format_exc())
+            logger.warn("Failed to get Storage Volumes %s" % e.message)
 
         poolID = p.get("InstanceID")
         volumes = pool_volume_map.get(poolID);
@@ -668,20 +673,30 @@ def getSCSIProtocolControllers(conn, array):
 
         if configSvc is not None and 0 < len(configSvc):
             # Get only SCSIProtocolControllers for this system
-            SPCs = conn.Associators(configSvc[0],
+            try:
+                SPCs = conn.Associators(configSvc[0],
                                     AssocClass="CIM_ConcreteDependency",
                                     ResultClass="CIM_SCSIProtocolController",
                                     PropertyList=kSCSIProtocolControllerPropList)
+            except Exception as e:
+                logger.warn("Failed to get SCSIProtocolControllers for this system %s" % e.message)
+
         if SPCs is None:
             # some use this association (conformant?)
-            SPCs = conn.Associators(array.path,
+            try:
+                SPCs = conn.Associators(array.path,
                                     AssocClass="CIM_SystemDevice",
                                     ResultClass="CIM_SCSIProtocolController",
                                     PropertyList=kSCSIProtocolControllerPropList)
+            except Exception as e:
+                logger.warn("Failed to get SCSIProtocolController %s " % e.message)
 
         if SPCs is None:
             # Desperate measures...Get all SCSIProtocolControllers found on the CIMOM
-            SPCs = conn.EnumerateInstances("CIM_SCSIProtocolController", PropertyList=kSCSIProtocolControllerPropList)
+            try:
+                SPCs = conn.EnumerateInstances("CIM_SCSIProtocolController", PropertyList=kSCSIProtocolControllerPropList)
+            except Exception as e:
+                logger.warn("Failed to enumerate intances of CIM_SCSIProtocolController. %s" % e.message)
 
         if SPCs is None or 0 >= len(SPCs):
             logger.info("No SCSIProtocolControllers found for Storage Array \"{0}\"", array["ElementName"])
