@@ -74,9 +74,8 @@ def collect_inventory(conn, tracker):
         iscsiPorts = getIscisiPorts(conn, ps_array, controllers)
         pools = getPools(conn, ps_array)
         disks = getDisks(conn, ps_array, controllers, supportedViews)
-
         extents = getExtents(conn, ps_array, controllers)
-        logger.debug("extents: {0}", len(extents))
+
 
         poolVolumeMap = getPoolVolumesMap(conn, ps_array, pools, supportedViews, extents)
         volumes = [y for x in poolVolumeMap.values() for y in x]
@@ -90,7 +89,7 @@ def collect_inventory(conn, tracker):
                     disk.__setitem__("PoolID", k)
 
             poolVolumes = poolVolumeMap.get(k)
-            logger.debug('%s disks: %d, volumes: %d' % (k, len(poolDiskPaths), len(poolVolumes) if poolVolumes else 0))
+            logger.info('%s disks: %d, volumes: %d' % (k, len(poolDiskPaths), len(poolVolumes) if poolVolumes else 0))
 
         # getDiskExtents getDiskToVolumeAssociation
         # print("extents: ", len(extents))
@@ -100,7 +99,7 @@ def collect_inventory(conn, tracker):
         if controllers:
             logger.debug("controller: {0}", controllers[0].tomof())
         if fcPorts:
-            logger.debug("fcPorts[0]: {0}", fcPorts[0].tomof())
+            logger.info("fcPorts[0]: {0}", fcPorts[0].tomof())
         if iscsiPorts:
             logger.debug("iscisiPorts[0]: {0}", iscsiPorts[0].tomof())
         if pools:
@@ -136,7 +135,7 @@ def collect_inventory(conn, tracker):
             submit_inventory(model, inventory)
 
         submit_data = update.prepare_submission()
-        logger.info("submit inventory data: {0}", submit_data.json)
+        logger.debug("submit inventory data: {0}", submit_data.json)
 
         model.submit(inventory_frequency=inventory_frequency,
                      performance_frequency=performance_frequency)
@@ -214,7 +213,7 @@ def collect_performance(conn, tracker):
 
         controllerStats = getAllControllerStatistics(conn, controllers, statAssociations, statObjectMap)
         fcPortStats = getAllPortStatistics(conn, fcPorts, statAssociations, statObjectMap)
-        logger.debug("fcPortStats: {0}", len(fcPortStats))
+        logger.info("fcPortStats: {0}", len(fcPortStats))
         iscsiPortStats = getAllPortStatistics(conn, iscsiPorts, statAssociations, statObjectMap)
         logger.info("iscsiPortStats: {0}", len(iscsiPortStats))
         volumeStats = getAllVolumeStatistics(conn, volumes, statAssociations, statObjectMap)
@@ -252,7 +251,7 @@ def collect_performance(conn, tracker):
             submit_performance(model, performance, tracker)
 
         submission = update.prepare_submission().json
-        logger.info("submission {0} ", submission)
+        logger.debug("submission {0} ", submission)
 
         model.submit(inventory_frequency=inventory_frequency,
                  performance_frequency=performance_frequency)
@@ -266,7 +265,7 @@ def collect_performance(conn, tracker):
 
 
 def execute_request(server_url, creds, namespace):
-    print('Requesting url=%s, ns=%s' % \
+    logger.info('Requesting url=%s, ns=%s' % \
         (server_url, namespace))
 
     try:
@@ -276,33 +275,33 @@ def execute_request(server_url, creds, namespace):
         foglight.utils.disable_ssl_cert_checking()
 
         # Create a connection
-        conn = WBEMConnection(server_url, creds, default_namespace=namespace, verify=False, timeout=300)
+        conn = WBEMConnection(server_url, creds, default_namespace=namespace, verify=False, timeout=180)
         logger.info("conn: {0}", conn)
         detectInteropNamespace(conn)
 
         tracker = foglight.model.CollectionTracker(inventory_frequency.seconds / 60)
         # collect_inventory(conn, tracker)
 
+        if tracker.last_inventory:
+            collect_performance(conn, tracker)
+            tracker.record_performance()
+
         if tracker.is_inventory_recommended():
             logger.info("Inventory collection required")
             collect_inventory(conn, tracker)
             tracker.record_inventory()
 
-        if tracker.last_inventory:
-            collect_performance(conn, tracker)
-            tracker.record_performance()
-
     # handle any exception
     except CIMError as err:
         # If CIMError, display CIMError attributes
         if isinstance(err, CIMError):
-            print("Operation failed: %s" % err)
-            print(traceback.format_exc())
+            logger.error("Operation failed: %s" % err)
+            logger.error(traceback.format_exc())
         else:
-            print ("Operation failed: %s" % err)
-            print(traceback.format_exc())
+            logger.error("Operation failed: %s" % err)
+            logger.error(traceback.format_exc())
     except Exception:
-        print(traceback.format_exc())
+        logger.error(traceback.format_exc())
     finally:
         if conn:
             conn = None

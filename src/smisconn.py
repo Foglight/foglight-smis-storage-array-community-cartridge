@@ -26,5 +26,55 @@ class smisconn():
                 instances = self.conn.EnumerateInstances(ClassName, namespace=namespace, **params)
                 break
             except Exception,e:
-                time.sleep(10)
+                logger.warn("Failed to EnumerateInstances {0}", e.message)
         return instances
+
+    def Associators(self, ObjectName, **params):
+        comps = []
+        for i in range(1,3):
+            try:
+                comps = self.conn.Associators(ObjectName, **params)
+                break
+            except Exception, e:
+                logger.warn("Failed to Associators {0}",e.message)
+        return comps
+
+    def AssociatorNames(self, ObjectName, **params):
+        names = []
+        for i in range(1,3):
+            try:
+                names = self.conn.AssociatorNames(ObjectName, **params)
+                break
+            except Exception, e:
+                logger.warn("Failed to AssociatorNames {0}", e.message)
+        return names
+
+    def References(self, ObjectName, **params):
+        refs = []
+        for i in range(1,3):
+            try:
+                refs = self.conn.References(ObjectName, **params)
+                break
+            except Exception, e:
+                logger.warn("Failed to References {0}", e.message)
+        return refs
+
+    def EnumerateClassNames(self, namespace=None, **params):
+        cnames = []
+        for i in range(1,3):
+            try:
+                cnames = self.conn.EnumerateClassNames(namespace=namespace, **params)
+                break
+            except Exception, e:
+                logger.warn("Failed to EnumerateClassNames {0}", e.message)
+        return cnames
+
+    def GetClass(self, ClassName, namespace=None, **params):
+        cls = None
+        for i in range(1,3):
+            try:
+                cls = self.conn.GetClass(ClassName, namespace=namespace, **params)
+                break
+            except Exception, e:
+                logger.warn("Failed to GetClass {0}", e.message)
+        return cls

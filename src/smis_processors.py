@@ -283,7 +283,7 @@ def processITLs(array, cim_volumeMappingSPCs, volumeStats):
 
                 for port in ports:
                     portwwn = port.get("PermanentAddress").lower()
-                    portType = 'FC' if port.get("CreationClassName").lower().endswith("fcport") else "ISCSI"
+                    portType = 'FC' if "fcport" in port.get("CreationClassName").lower() else "ISCSI"
 
 
                     itl0_devicePath = None
@@ -301,6 +301,10 @@ def processITLs(array, cim_volumeMappingSPCs, volumeStats):
 
                     if hardwareIdsLen == 0:
                         continue
+                    # targetPortKey = foglight.topology.make_object_key(portType, {"wwn": portwwn})
+                    # if array._getObject(targetPortKey) is None:
+                    #     logger.warn("Found no port {0}", portwwn)
+                    #     continue
                     for hardwareId in storHardwareIDs:
                         if hardwareId.get("StorageID") is None: continue
                         storageId = hardwareId.get("StorageID").lower()
@@ -592,7 +596,7 @@ def processVolumeStats(array, volumeStats, lastStats, _tracker, clockTickInterva
                 durationTimeCounter = durationInt * 10^6 / clockTickInterval
                 if (None == idleTimeCounter or 0 == idleTimeCounter) and durationTimeCounter > ioTimeCounter:
                     idleTimeCounter = durationTimeCounter - ioTimeCounter
-                busyPercent = getBusyPercent(ioTimeCounter, idleTimeCounter)
+                busyPercent = getBusyPercent(ioTimeCounter, abs(idleTimeCounter))
                 if None != busyPercent:
                     volume.set_metric("busy", busyPercent)
 
@@ -697,7 +701,7 @@ def processDiskStats(array, diskStats, lastStats, _tracker, clockTickInterval):
                 durationTimeCounter = durationInt * 10^6 / clockTickInterval
                 if (None == idleTimeCounter or 0 == idleTimeCounter) and durationTimeCounter > ioTimeCounter:
                     idleTimeCounter = durationTimeCounter - ioTimeCounter
-                busyPercent = getBusyPercent(ioTimeCounter, idleTimeCounter)
+                busyPercent = getBusyPercent(ioTimeCounter, abs(idleTimeCounter))
                 if None != busyPercent:
                     disk.set_metric("busy", busyPercent)
 

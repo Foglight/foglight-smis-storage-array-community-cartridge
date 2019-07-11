@@ -10,22 +10,25 @@ from pywbemReq.cim_obj import CIMInstanceName, CIMInstance, tocimobj
 from pywbemReq.cim_operations import is_subclass
 from pywbemReq.cim_types import *
 
+from urllib3.exceptions import SSLError as _SSLError
+
 logger = foglight.logging.get_logger("smis-agent")
 
-def getRegisteredProfiles(conn):
+def getRegisteredProfiles(_conn):
     kProfilePropList = ["InstanceID", "RegisteredVersion", "RegisteredName"]
-    profiles = conn.EnumerateInstances("CIM_RegisteredProfile", DeepInheritance=True, PropertyList=kProfilePropList)
+    profiles = _conn.EnumerateInstances("CIM_RegisteredProfile", DeepInheritance=True, PropertyList=kProfilePropList)
     return profiles
 
 def getElementsForProfile(conn, profileName):
-    profiles = getRegisteredProfiles(conn)
+    _conn = smisconn(conn)
+    profiles = getRegisteredProfiles(_conn)
     profiles = [p for p in profiles if p.get("RegisteredName") == profileName]
     profiles = profiles[:1]
     logger.info('profiles: %d' % len(profiles))
 
     elements = []
     for p in profiles:
-        managedElements = conn.Associators(p.path,
+        managedElements = _conn.Associators(p.path,
                                 AssocClass="CIM_ElementConformsToProfile",
                                 Role="ConformantStandard",
                                 ResultRole="ManagedElement")
@@ -77,7 +80,8 @@ def getArrays(conn):
 
 
 def getProductInfo(conn, ps_array):
-    physpacks = conn.Associators(ps_array.path,
+    _conn = smisconn(conn)
+    physpacks = _conn.Associators(ps_array.path,
                                 AssocClass="CIM_SystemPackaging",
                                 ResultClass="CIM_PhysicalPackage")
     if physpacks is None:
@@ -103,7 +107,7 @@ def getProductInfo(conn, ps_array):
         model = string.replace(model, '_', '-')
         ps_array.__setitem__("Model", model)
 
-    products = conn.Associators(use_chassis.path,
+    products = _conn.Associators(use_chassis.path,
                                 AssocClass="CIM_ProductPhysicalComponent",
                                 ResultClass="CIM_Product")
     if products is None or len(products) == 0:
@@ -121,7 +125,8 @@ def getProductInfo(conn, ps_array):
     return True
 
 def getViewCapabilities(conn, ps_array):
-    viewCaps = conn.Associators(ps_array.path,
+    _conn = smisconn(conn)
+    viewCaps = _conn.Associators(ps_array.path,
                                 AssocClass="CIM_ElementCapabilities",
                                 ResultClass="SNIA_ViewCapabilities")
     return viewCaps
@@ -140,7 +145,8 @@ def getSupportedViews(conn, ps_array, isBlockStorageViewsSupported):
 
 
 def getOperationalStatusValues(conn, ps_array, className):
-    cls = conn.GetClass(className,
+    _conn = smisconn(conn)
+    cls = _conn.GetClass(className,
                         namespace=ps_array.path.namespace,
                         LocalOnly=False,
                         IncludeQualifiers=True,
@@ -165,7 +171,8 @@ def convertOperationalStatusValues(operationalStatus, operationalStatusValues):
 
 def getControllers(conn, ps_array):
     controllers = []
-    comps = conn.Associators(ps_array.path,
+    _conn = smisconn(conn)
+    comps = _conn.Associators(ps_array.path,
                                 AssocClass="CIM_ComponentCS",
                                 ResultClass="CIM_ComputerSystem",
                                 Role="GroupComponent",
@@ -187,7 +194,7 @@ def getControllers(conn, ps_array):
             c.path.__setitem__("ElementName", c.get("ElementName"))
 
 
-        software_identities = conn.Associators(c.path, AssocClass="CIM_InstalledSoftwareIdentity",
+        software_identities = _conn.Associators(c.path, AssocClass="CIM_InstalledSoftwareIdentity",
                                                ResultClass="CIM_SoftwareIdentity");
         if software_identities is not None and len(software_identities) > 0 and software_identities[0] is not None:
             versionString = software_identities[0].get("VersionString")
@@ -206,6 +213,7 @@ def getControllers(conn, ps_array):
 
 
 def getFcPorts(conn, ps_array, controllers):
+    _conn = smisconn(conn)
     fc_ports = []
     if len(controllers) <= 0:
         return fc_ports
@@ -213,7 +221,7 @@ def getFcPorts(conn, ps_array, controllers):
     empty_controllers= []
     for ct in controllers:
         try:
-            ports = conn.Associators(ct.path, AssocClass="CIM_SystemDevice",
+            ports = _conn.Associators(ct.path, AssocClass="CIM_SystemDevice",
                                     ResultClass="CIM_FCPort",
                                     Role="GroupComponent",
                                     ResultRole="PartComponent")
@@ -231,14 +239,14 @@ def getFcPorts(conn, ps_array, controllers):
     #     controllers.remove(x)
 
     if len(fc_ports) <= 0 and len(controllers) > 0:
-        fc_ports = conn.Associators(ps_array.path,
+        fc_ports = _conn.Associators(ps_array.path,
                                     AssocClass="CIM_SystemDevice",
                                     ResultClass="CIM_FCPort")
         for p in fc_ports:
             p.__setitem__("ControllerName", controllers[0].get("ElementName"))
 
     if len(fc_ports) <= 0 and len(controllers) > 0:
-        fc_ports = conn.EnumerateInstances("CIM_FCPort", namespace=ps_array.path.namespace)
+        fc_ports = _conn.EnumerateInstances("CIM_FCPort", namespace=ps_array.path.namespace)
         for p in fc_ports:
             p.__setitem__("ControllerName", p["SystemName"])
 
@@ -268,13 +276,14 @@ def getFcPorts(conn, ps_array, controllers):
 
 
 def getIscisiPorts(conn, ps_array, controllers):
+    _conn = smisconn(conn)
     iscsi_ports = []
     if len(controllers) <= 0:
         return iscsi_ports
 
     try:
         for ct in controllers:
-            ports = conn.Associators(ct.path,
+            ports = _conn.Associators(ct.path,
                                     AssocClass="CIM_HostedAccessPoint",
                                     ResultClass="CIM_iSCSIProtocolEndpoint")
             if ports:
@@ -285,7 +294,7 @@ def getIscisiPorts(conn, ps_array, controllers):
         logger.error("getIscisiPorts Error: %s" % err.message)
 
     if len(iscsi_ports) <= 0:
-        iscsi_ports = conn.Associators(ps_array.path,
+        iscsi_ports = _conn.Associators(ps_array.path,
                                     AssocClass="CIM_SystemDevice",
                                     ResultClass="CIM_iSCSIProtocolEndpoint")
 
@@ -305,9 +314,10 @@ def getIscisiPorts(conn, ps_array, controllers):
 
 
 def getExtents(conn, ps_array, controllers):
+    _conn = smisconn(conn)
     extents = []
     try:
-        extents = conn.Associators(ps_array.path,
+        extents = _conn.Associators(ps_array.path,
                                 AssocClass="CIM_SystemDevice",
                                 ResultClass="CIM_StorageExtent")
     except Exception as err:
@@ -315,7 +325,7 @@ def getExtents(conn, ps_array, controllers):
 
     if len(extents) == 0:
         for ct in controllers:
-            extentComps = conn.Associators(ct.path,
+            extentComps = _conn.Associators(ct.path,
                                 AssocClass="CIM_SystemDevice",
                                 ResultClass="CIM_StorageExtent")
             extents += extentComps
@@ -324,11 +334,13 @@ def getExtents(conn, ps_array, controllers):
     for extent in extents:
         if extent.has_key("DeviceID"):
             extentLookup[extent.get("DeviceID")] = extent
+    logger.info("extents: {0}", len(extentLookup))
     return extentLookup
 
 
 def getPools(conn, ps_array):
-    spools = conn.Associators(ps_array.path,
+    _conn = smisconn(conn)
+    spools = _conn.Associators(ps_array.path,
                                 AssocClass="CIM_HostedStoragePool",
                                 ResultClass="CIM_StoragePool")
 
@@ -354,15 +366,15 @@ def getPools(conn, ps_array):
     return pools
 
 
-def __getDisksFromDriveViews(conn, ps_array, controllers):
+def __getDisksFromDriveViews(_conn, ps_array, controllers):
     disks = []
-    diskViews = conn.Associators(ps_array.path,
+    diskViews = _conn.Associators(ps_array.path,
                                 AssocClass="SNIA_SystemDeviceView",
                                 ResultClass="SNIA_DiskDriveView")
     if diskViews is None or len(diskViews) <=0:
         diskViews = []
         for ct in controllers:
-            compViews = conn.Associators(ct.path,
+            compViews = _conn.Associators(ct.path,
                                 AssocClass="SNIA_SystemDeviceView",
                                 ResultClass="SNIA_DiskDriveView")
             if compViews is not None and len(compViews) > 0:
@@ -388,37 +400,37 @@ def __getDisksFromDriveViews(conn, ps_array, controllers):
     return disks
 
 
-def __getDiskDrives(conn, ps_array, controllers):
+def __getDiskDrives(_conn, ps_array, controllers):
     disks = []
-    try:
-        disks = conn.Associators(ps_array.path,
-                                    AssocClass="CIM_SystemDevice",
-                                    ResultClass="CIM_DiskDrive")
-        if len(disks) == 0:
-            for ct in controllers:
-                diskComps = conn.Associators(ct.path,
-                                    AssocClass="CIM_SystemDevice",
-                                    ResultClass="CIM_DiskDrive")
-                disks += diskComps
-    except:
-        logger.error(traceback.format_exc())
+    disks = _conn.Associators(ps_array.path,
+                     AssocClass="CIM_SystemDevice",
+                     ResultClass="CIM_DiskDrive")
+
+    if len(disks) == 0:
+        for ct in controllers:
+            diskComps = _conn.Associators(ct.path,
+                        AssocClass="CIM_SystemDevice",
+                        ResultClass="CIM_DiskDrive")
+            disks += diskComps
     return disks
 
 
 def getDisks(conn, ps_array, controllers, supportedViews):
+    _conn = smisconn(conn)
     if supportedViews.__contains__(u"DiskDriveView"):
-        disks = __getDisksFromDriveViews(conn, ps_array, controllers)
+        disks = __getDisksFromDriveViews(_conn, ps_array, controllers)
     else:
-        disks = __getDiskDrives(conn, ps_array, controllers)
+        disks = __getDiskDrives(_conn, ps_array, controllers)
 
     if len(disks)<=0:
-        disks = conn.EnumerateInstances("CIM_DiskDrive", ps_array.path.namespace)
+        disks = _conn.EnumerateInstances("CIM_DiskDrive", ps_array.path.namespace)
         disks = [d for d in disks if d.get("SystemName") == ps_array.get("Name")]
 
+    logger.info("disks: {0}", len(disks))
     _operationalStatusValues = None
     for d in disks:
-        getPhysicalPackages(conn, d)
-        getDiskExtents(conn, d)
+        getPhysicalPackages(_conn, d)
+        getDiskExtents(_conn, d)
 
         if _operationalStatusValues is None:
             _operationalStatusValues = getOperationalStatusValues(conn, ps_array, d.classname)
@@ -426,12 +438,14 @@ def getDisks(conn, ps_array, controllers, supportedViews):
             status = convertOperationalStatusValues(d['OperationalStatus'], _operationalStatusValues)
             d.__setitem__("OperationalStatus", status)
 
-    logger.info("disks: {0}", len(disks))
+    logger.info("get physicalPackage extents and operationalStatus for each disks: {0}", len(disks))
     return disks
 
 
-def getDiskExtents(conn, disk):
-    diskExtents = conn.Associators(disk.path, AssocClass="CIM_MediaPresent", ResultClass="CIM_StorageExtent")
+def getDiskExtents(_conn, disk):
+    diskExtents = []
+    diskExtents = _conn.Associators(disk.path, AssocClass="CIM_MediaPresent", ResultClass="CIM_StorageExtent")
+
     if len(diskExtents) <=0:
         return
     extent = diskExtents[0]
@@ -441,8 +455,15 @@ def getDiskExtents(conn, disk):
     return None
 
 
-def getPhysicalPackages(conn, disk):
-    packages = conn.Associators(disk.path,  AssocClass="CIM_Realizes", ResultClass="CIM_PhysicalPackage")
+def getPhysicalPackages(_conn, disk):
+    packages = []
+    for i in (1,3):
+        try:
+            packages = _conn.Associators(disk.path,  AssocClass="CIM_Realizes", ResultClass="CIM_PhysicalPackage")
+            break
+        except Exception, e:
+            logger.warn("Failed to get physical packages for the disk {0}", disk["DeviceID"])
+
     packages = [p for p in packages if p.has_key("Manufacturer")]
     if len(packages) <= 0:
         return
@@ -458,24 +479,21 @@ def getPhysicalPackages(conn, disk):
     return None
 
 
-def getDiskExtentsMap(conn, disks):
+def __getDiskExtentsMap(_conn, disks):
     diskExtents = {}
     for d in disks:
-        extents = conn.AssociatorNames(d.path,
+        extents = _conn.AssociatorNames(d.path,
                                 AssocClass="CIM_MediaPresent",
                                 ResultClass="CIM_StorageExtent")
         diskExtents[d.path] = extents
     return diskExtents
 
 
-def __getVolumesFromVolumeViews(conn, ps_array):
+def __getVolumesFromVolumeViews(_conn, ps_array):
     pool_volume_map = {}
-    try:
-        volume_views = conn.Associators(ps_array.path,
-                                AssocClass="SNIA_SystemDeviceView",
-                                ResultClass="SNIA_VolumeView")
-    except Exception as e:
-        logger.error(e)
+    volume_views = _conn.Associators(ps_array.path,
+                            AssocClass="SNIA_SystemDeviceView",
+                            ResultClass="SNIA_VolumeView")
 
     for view in volume_views:
         # pull the keys specific to the storage volume from the view of the volume
@@ -500,16 +518,13 @@ def __getVolumesFromVolumeViews(conn, ps_array):
     return pool_volume_map
 
 
-def __getVolumesFromPools(conn, pools):
+def __getVolumesFromPools(_conn, pools):
     pool_volume_map = {}
     for p in pools:
         vols = []
-        try:
-            vols = conn.Associators(p.path,
-                            AssocClass="CIM_AllocatedFromStoragePool",
-                            ResultClass="CIM_StorageVolume")
-        except Exception as e:
-            logger.warn("Failed to get Storage Volumes %s" % e.message)
+        vols = _conn.Associators(p.path,
+                        AssocClass="CIM_AllocatedFromStoragePool",
+                        ResultClass="CIM_StorageVolume")
 
         poolID = p.get("InstanceID")
         volumes = pool_volume_map.get(poolID);
@@ -521,13 +536,14 @@ def __getVolumesFromPools(conn, pools):
 
 
 def getPoolVolumesMap(conn, ps_array, pools, supportedViews, extents):
+    _conn = smisconn(conn)
     poolVolumeMap = {}
     # Do not allow VolumeViews for Hitachi - they do not provide the necessary attributes in the VolumeView class:
     # specifically "ThinlyProvisioned" and "IsComposite"
     if supportedViews.__contains__(u"VolumeView") and not ps_array.classname.startswith("HITACHI"):
-        poolVolumeMap = __getVolumesFromVolumeViews(conn, ps_array)
+        poolVolumeMap = __getVolumesFromVolumeViews(_conn, ps_array)
     if len(poolVolumeMap) <= 0:
-        poolVolumeMap = __getVolumesFromPools(conn, pools)
+        poolVolumeMap = __getVolumesFromPools(_conn, pools)
 
     _operationalStatusValues = None
     for poolID in poolVolumeMap.keys():
@@ -553,7 +569,8 @@ def getPoolVolumesMap(conn, ps_array, pools, supportedViews, extents):
     return poolVolumeMap
 
 def getPoolDiskMap(conn, pools, disks):
-    diskExtentsMap = getDiskExtentsMap(conn, disks)
+    _conn = smisconn(conn)
+    diskExtentsMap = __getDiskExtentsMap(_conn, disks)
 
     poolDiskMap = {}
     all_class_names = getClassNames(conn, conn.default_namespace, None)
@@ -565,7 +582,7 @@ def getPoolDiskMap(conn, pools, disks):
 
         poolDisks = []
         if has_disk_drive_class:
-            poolDisks = conn.AssociatorNames(p.path,
+            poolDisks = _conn.AssociatorNames(p.path,
                             AssocClass="CIM_ConcreteDependency",
                             ResultClass="CIM_DiskDrive",
                             Role="Dependent",
@@ -575,7 +592,7 @@ def getPoolDiskMap(conn, pools, disks):
 
         if len(poolDisks) <= 0:
 
-            poolDiskExtentPaths = conn.AssociatorNames(p.path,
+            poolDiskExtentPaths = _conn.AssociatorNames(p.path,
                             AssocClass="CIM_ConcreteComponent",
                             ResultClass="CIM_StorageExtent",
                             Role="GroupComponent",
@@ -593,10 +610,11 @@ def getPoolDiskMap(conn, pools, disks):
 
 
 def getMaskingMappingViews(conn, array):
+    _conn = smisconn(conn)
     logger.info("Start to get MaskingMappingViews")
     mVolumeMappingMaskingLookup = {}
     try:
-        hardwareIDMgmtServices = conn.AssociatorNames(array.path,
+        hardwareIDMgmtServices = _conn.AssociatorNames(array.path,
                                      AssocClass="CIM_HostedService",
                                      ResultClass="CIM_StorageHardwareIDManagementService")
         if hardwareIDMgmtServices is None or 0 >= len(hardwareIDMgmtServices):
@@ -604,7 +622,7 @@ def getMaskingMappingViews(conn, array):
             return False
 
 
-        storageHarwareIDs = conn.Associators(hardwareIDMgmtServices[0],
+        storageHarwareIDs = _conn.Associators(hardwareIDMgmtServices[0],
                                      AssocClass="CIM_ConcreteDependency",
                                      ResultClass="CIM_StorageHardwareID")
         if storageHarwareIDs is None or 0 >= len(storageHarwareIDs):
@@ -612,7 +630,7 @@ def getMaskingMappingViews(conn, array):
             return False
 
         for hardwareID in storageHarwareIDs:
-            views = conn.References(hardwareID.path,
+            views = _conn.References(hardwareID.path,
                                     ResultClass="SNIA_MaskingMappingView")
 
             for view in views:
@@ -631,6 +649,7 @@ def getMaskingMappingViews(conn, array):
 
 
 def getSCSIProtocolControllers(conn, array):
+    _conn = smisconn(conn)
     logger.info("Start to get SCSIProtocolControllers")
     kSCSIProtocolControllerPropList = [
         "SystemCreationClassName",
@@ -662,19 +681,19 @@ def getSCSIProtocolControllers(conn, array):
     try:
         # CIM_ProtocolControllerMaskingCapabilities: Defines characteristics of how volumes
         # can be mapped/masked on the storage array controller ports.
-        PCMCs = conn.Associators(array.path,
+        PCMCs = _conn.Associators(array.path,
                                     AssocClass="CIM_ElementCapabilities",
                                     ResultClass="CIM_ProtocolControllerMaskingCapabilities")
         SPCs = None
 
-        configSvc = conn.AssociatorNames(array.path,
+        configSvc = _conn.AssociatorNames(array.path,
                                     AssocClass="CIM_HostedService",
                                     ResultClass="CIM_ControllerConfigurationService")
 
         if configSvc is not None and 0 < len(configSvc):
             # Get only SCSIProtocolControllers for this system
             try:
-                SPCs = conn.Associators(configSvc[0],
+                SPCs = _conn.Associators(configSvc[0],
                                     AssocClass="CIM_ConcreteDependency",
                                     ResultClass="CIM_SCSIProtocolController",
                                     PropertyList=kSCSIProtocolControllerPropList)
@@ -684,7 +703,7 @@ def getSCSIProtocolControllers(conn, array):
         if SPCs is None:
             # some use this association (conformant?)
             try:
-                SPCs = conn.Associators(array.path,
+                SPCs = _conn.Associators(array.path,
                                     AssocClass="CIM_SystemDevice",
                                     ResultClass="CIM_SCSIProtocolController",
                                     PropertyList=kSCSIProtocolControllerPropList)
@@ -694,7 +713,7 @@ def getSCSIProtocolControllers(conn, array):
         if SPCs is None:
             # Desperate measures...Get all SCSIProtocolControllers found on the CIMOM
             try:
-                SPCs = conn.EnumerateInstances("CIM_SCSIProtocolController", PropertyList=kSCSIProtocolControllerPropList)
+                SPCs = _conn.EnumerateInstances("CIM_SCSIProtocolController", PropertyList=kSCSIProtocolControllerPropList)
             except Exception as e:
                 logger.warn("Failed to enumerate intances of CIM_SCSIProtocolController. %s" % e.message)
 
@@ -705,7 +724,7 @@ def getSCSIProtocolControllers(conn, array):
         # Cache the storage hardware ID and authorized subject instances
         if mStorageHardwareIDLookup is None:
             mStorageHardwareIDLookup = {}
-            objs = conn.EnumerateInstances("CIM_StorageHardwareID",
+            objs = _conn.EnumerateInstances("CIM_StorageHardwareID",
                                     namespace = array.path.namespace,
                                     DeepInheritance = True)
             for obj in objs:
@@ -715,7 +734,7 @@ def getSCSIProtocolControllers(conn, array):
 
         if mAuthorizedSubjectLookup is None:
             mAuthorizedSubjectLookup = {}
-            assocs = conn.EnumerateInstances("CIM_AuthorizedSubject",
+            assocs = _conn.EnumerateInstances("CIM_AuthorizedSubject",
                                            namespace=array.path.namespace,
                                            DeepInheritance=True)
 
@@ -725,7 +744,7 @@ def getSCSIProtocolControllers(conn, array):
         # print(mAuthorizedSubjectLookup)
         for spc in SPCs:
             # Add StorageHardwareIDs associated with the SCSIProtocolController
-            authPrivileges = conn.AssociatorNames(spc.path,
+            authPrivileges = _conn.AssociatorNames(spc.path,
                                     AssocClass="CIM_AuthorizedTarget",
                                     ResultClass="CIM_AuthorizedPrivilege")
             if authPrivileges is not None and 0 < len(authPrivileges):
@@ -740,7 +759,7 @@ def getSCSIProtocolControllers(conn, array):
             # The CIM_ProtocolControllerForUnit associates a Volume to this SPC. It contains a property,
             # "DeviceNumber", that is the LUN of this association of a Volume to a Port.
             pcfuLookup = {}
-            pcfus = conn.References(spc.path,
+            pcfus = _conn.References(spc.path,
                                         ResultClass="CIM_ProtocolControllerForUnit",
                                         Role="Antecedent",
                                         includeClassOrigin=False,
@@ -774,7 +793,7 @@ def getSCSIProtocolControllers(conn, array):
             # Add FCPorts associated with the SCSIProtocolController
             # FCPort is associated to a SCSIProtocolController through
             # SAPAvailableForElement -> SCSIProtocolEndpoint -> DeviceSAPImplementation
-            SPEs = conn.Associators(spc.path,
+            SPEs = _conn.Associators(spc.path,
                                         AssocClass="CIM_SAPAvailableForElement",
                                         ResultClass="CIM_SCSIProtocolEndpoint")
             for spe in SPEs:
@@ -788,7 +807,7 @@ def getSCSIProtocolControllers(conn, array):
                     spc.__setitem__("spe", spe)
                 else:
                     try:
-                        ports = conn.Associators(spe.path,
+                        ports = _conn.Associators(spe.path,
                                             AssocClass="CIM_DeviceSAPImplementation",
                                             ResultClass="CIM_NetworkPort",
                                             PropertyList=kNetworkPortPropList)
@@ -799,7 +818,6 @@ def getSCSIProtocolControllers(conn, array):
                     except Exception, e:
                         logger.warn('Failed to associate {0} to ports', spe.path)
                 # print(speName, spe.tomof())
-
 
     except Exception, e:
         logger.error('Failed to get SCSIProtocolControllers: {0}', traceback.format_exc())
@@ -903,6 +921,7 @@ def getAllDiskStatistics(conn, disks, statAssociations, statObjectMap, class_nam
     return diskStats
 
 def getDiskStatistics(conn, disk, statAssociations, statObjectMap, isMediaPresent):
+    _conn = smisconn(conn)
     disk_stat = []
     on_media = False     #TODO if stats for disks are associated with the media on this SMI provider
 
@@ -914,9 +933,10 @@ def getDiskStatistics(conn, disk, statAssociations, statObjectMap, isMediaPresen
     if disk_stat is None or len(disk_stat) <= 0:
         medias = []
         if isMediaPresent:
-            medias = conn.AssociatorNames(disk.path,
-                                      AssocClass="CIM_MediaPresent",
-                                      ResultClass="CIM_StorageExtent")
+            medias = _conn.AssociatorNames(disk.path,
+                              AssocClass="CIM_MediaPresent",
+                              ResultClass="CIM_StorageExtent")
+
         if len(medias) > 0:
             disk_stat = getAssociatedStatistics(conn, medias[0], statAssociations, statObjectMap)
             if disk_stat is None or len(disk_stat) <= 0:
@@ -925,6 +945,7 @@ def getDiskStatistics(conn, disk, statAssociations, statObjectMap, isMediaPresen
     if len(disk_stat) > 0:
         disk_stat[0].__setitem__("statID", disk["DeviceID"].upper())
         disk_stat[0].__setitem__("OperationalStatus", disk["OperationalStatus"])
+    logger.info("get disk statistics {0} ", disk["DeviceID"])
     return disk_stat
 
 
@@ -942,15 +963,7 @@ def getVolumeStatistics(conn, volume, statAssociations, statObjectMap):
     volume_stat = getAssociatedStatistics(conn, volume.path, statAssociations, statObjectMap)
 
     if volume_stat is None or len(volume_stat) <= 0:
-        volume_stat = []
-        for i in range(1,1):
-            try:
-                volume_stat = conn.Associators(volume.path,
-                                      AssocClass="CIM_ElementStatisticalData",
-                                      ResultClass="CIM_BlockStorageStatisticalData")
-                break
-            except Exception,e:
-                pass
+        volume_stat = getStorageStatisticsData(conn, volume.path)
 
     if len(volume_stat) > 0:
         volume_stat[0].__setitem__("uuid", volume["Name"])
@@ -964,12 +977,10 @@ def getVolumeStatistics(conn, volume, statAssociations, statObjectMap):
 
 
 def getStorageStatisticsData(conn, path):
+    _conn = smisconn(conn)
     stat = []
-    try:
-        stat = conn.Associators(path, AssocClass="CIM_ElementStatisticalData",
-                                  ResultClass="CIM_BlockStorageStatisticalData")
-    except Exception, e:
-        logger.error("getStorageStatisticsData Error: {0}", traceback.format_exc())
+    stat = _conn.Associators(path, AssocClass="CIM_ElementStatisticalData",
+                              ResultClass="CIM_BlockStorageStatisticalData")
     return stat
 
 
@@ -995,37 +1006,36 @@ def getAssociatedStatistics(conn, path, statAssociations, statDataMap):
 
 
 def getStatObjectMap(conn, NAMESPACE):
+    _conn = smisconn(conn)
     stat_object_map = {}
-    try:
-        statObjects = conn.EnumerateInstances("CIM_BlockStorageStatisticalData",
-                                            namespace=NAMESPACE, DeepInheritance=True)
 
-        for d in statObjects:
-            if d.has_key("InstanceID"):
-                stat_object_map[d["InstanceID"]] = d
-            elif d.path.has_key("InstanceID"):
-                stat_object_map[d.path["InstanceID"]] = d
-            # print(d.path["InstanceID"])
-    except Exception, e:
-        logger.error("trying to get statistical data found exception {0}", traceback.format_exc())
+    statObjects = _conn.EnumerateInstances("CIM_BlockStorageStatisticalData",
+                                        namespace=NAMESPACE, DeepInheritance=True)
+
+    for d in statObjects:
+        if d.has_key("InstanceID"):
+            stat_object_map[d["InstanceID"]] = d
+        elif d.path.has_key("InstanceID"):
+            stat_object_map[d.path["InstanceID"]] = d
+        # print(d.path["InstanceID"])
 
     logger.info("len(statDatas): {0}", len(stat_object_map))
     return stat_object_map
 
 
 def getStatAssociations(conn, NAMESPACE):
+    _conn = smisconn(conn)
     stat_associations = {}
-    try:
-        stat_associations = conn.EnumerateInstances("CIM_ElementStatisticalData",
-                                    namespace=NAMESPACE, DeepInheritance=True)
-    except Exception, e:
-        logger.error("trying to get statistical data association found exception {0}", traceback.format_exc())
+
+    stat_associations = _conn.EnumerateInstances("CIM_ElementStatisticalData",
+                                namespace=NAMESPACE, DeepInheritance=True)
 
     logger.info("len(statAssociations): {0}", len(stat_associations))
     return stat_associations
 
 def getClassNames(conn, NAMESPACE, filter):
-    classNames = conn.EnumerateClassNames(namespace=NAMESPACE, DeepInheritance=True)
+    _conn = smisconn(conn)
+    classNames = _conn.EnumerateClassNames(namespace=NAMESPACE, DeepInheritance=True)
     if filter:
         classNames = [c for c in classNames if filter(c)]
     return sorted(classNames)
@@ -1048,12 +1058,13 @@ def hasStatisticalDataClass(conn, __namespace, all_class_names):
     return {"CIM_ElementStatisticalData", "CIM_BlockStorageStatisticalData"}.issubset(all_class_names)
 
 def getStatsCapabilities(conn, array):
-    statsService = conn.AssociatorNames(array.path,
+    _conn = smisconn(conn)
+    statsService = _conn.AssociatorNames(array.path,
                                         AssocClass="CIM_HostedService",
                                         ResultClass="CIM_BlockStatisticsService")
 
     if statsService is None or len(statsService) < 1:
-        statsService = conn.AssociatorNames(array.path,
+        statsService = _conn.AssociatorNames(array.path,
                                         AssocClass="CIM_HostedService",
                                         ResultClass="CIM_StorageConfigurationService")
 
@@ -1062,7 +1073,7 @@ def getStatsCapabilities(conn, array):
         return None
 
 
-    statsCaps = conn.Associators(statsService[0],
+    statsCaps = _conn.Associators(statsService[0],
                                         AssocClass="CIM_ElementCapabilities",
                                         ResultClass="CIM_BlockStatisticsCapabilities")
 
@@ -1074,10 +1085,10 @@ def getStatsCapabilities(conn, array):
     return statsCaps[0]
 
 def detectInteropNamespace(conn):
-    namespaces = ("interop", "root/interop", "pg_interop", "root/pg_interop", "root/cimv2", "root/compellent",
+    namespaces = ("interop", "root", "root/interop", "pg_interop", "root/pg_interop", "root/cimv2", "root/compellent",
                   "root/eternus", "root/hitachi/smis", "root/smis/current",
                   "root/hitachi/dm55", "root/hitachi/dm42", "root/hpmsa", "root/ema",
-                  "root/tpd", "root/emc", "root/eva", "root/ibm", "root/hpq", "purestorage", "root")
+                  "root/tpd", "root/emc", "root/eva", "root/ibm", "root/hpq", "purestorage")
     is_first = True
     for np in namespaces:
         conn.default_namespace = np
