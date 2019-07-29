@@ -168,7 +168,7 @@ def collect_performance(conn, tracker):
             return
 
         __namespace = ps_array.path.namespace
-        conn.default_namespace = __namespace
+        # conn.default_namespace = __namespace
         logger.info("NAMESPACE: {0}", __namespace)
         __CLASS_NAMES = getClassNames(conn, __namespace, None)
 
@@ -280,7 +280,6 @@ def execute_request(server_url, creds, namespace):
         detectInteropNamespace(conn)
 
         tracker = foglight.model.CollectionTracker(inventory_frequency.seconds / 60)
-        # collect_inventory(conn, tracker)
 
         if tracker.last_inventory:
             collect_performance(conn, tracker)
