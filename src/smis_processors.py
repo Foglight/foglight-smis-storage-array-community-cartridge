@@ -244,9 +244,13 @@ class SanCorrelationPath():
         self.lun = lun
 
 
-def processITLs(array, cim_volumeMappingSPCs, volumeStats):
+def processITLs(array, ps_array, cim_volumeMappingSPCs, volumeStats):
     itl0s = {}
     itl1s = {}
+    is_unity = false
+    if ps_array.get("Product") is not None:
+        is_unity = ps_array.get("Product").startswith("Unity")
+
     if None == cim_volumeMappingSPCs:
         logger.warn('There''s no ITLs found!')
         return
@@ -278,6 +282,8 @@ def processITLs(array, cim_volumeMappingSPCs, volumeStats):
 
             for pcfu in pcfus:
                 deviceNumber = long(pcfu.get("DeviceNumber"), 16)
+                if is_unity: deviceNumber = long(pcfu.get("DeviceNumber"))
+
                 volumePath = pcfu.path.get("Dependent")
                 lunId = volumePath.get("DeviceID")
 
@@ -783,7 +789,7 @@ def submit_performance(model, performance, _tracker):
 
     volume_mapping_spcs_path = get_volume_mapping_spcs_path(ps_array["SerialID"])
     volumeMappingSPCs = pickle_load(volume_mapping_spcs_path)
-    processITLs(array, volumeMappingSPCs, volumeStats)
+    processITLs(array, ps_array, volumeMappingSPCs, volumeStats)
 
     pickle_dump(last_stats_path, performance)
 

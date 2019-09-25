@@ -1,7 +1,7 @@
 {
-  "host"     : "",
-  "port"     : "5988",
+  "host"     : "10.160.0.108",
+  "port"     : "5989",
   "https"    : false,
-  "username" : "",
-  "password" : ""
+  "username" : "foglight",
+  "password" : "foglight"
 }

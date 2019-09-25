@@ -4,7 +4,7 @@ REM Package the agent, this creates a new agent, but can also be used to
 REM update a cartridge if the --create flags is changed to --update
 
 set START=%cd%
-set SDKDIR=C:\sinba\FVE\sdk\StorageSDK
+set SDKDIR=D:\C\sinba\FVE\sdk\StorageSDK
 set SDKLIBDIR=%SDKDIR%\lib
 set HARNESS=%SDKDIR%\python-sdk\bin\cartridge-generator.bat
 cd ..
@@ -15,7 +15,7 @@ rmdir /s/q state
 
 cd %START%
 call %HARNESS% --create --name="SMISStorageAgent" ^
-          --version "1.4.0" ^
+          --version "1.5.0" ^
           --libraries="%SDKLIBDIR%" ^
           --scripts="%AGENTDIR%"\src ^
           --properties="%CONFIGDIR%"\agent-properties.json ^
@@ -27,4 +27,4 @@ if not exist "./artifacts/" (
     mkdir artifacts
 )
 cd bin
-move SMISStorageAgent-1_4_0.car ../artifacts/
+move SMISStorageAgent-1_5_0.car ../artifacts/
