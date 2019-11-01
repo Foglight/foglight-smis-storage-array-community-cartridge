@@ -21,7 +21,7 @@ class smisconn():
 
     def EnumerateInstances(self, ClassName, namespace=None, **params):
         instances = []
-        for i in range(1,3):
+        for i in range(3):
             try:
                 instances = self.conn.EnumerateInstances(ClassName, namespace=namespace, **params)
                 break
@@ -31,17 +31,18 @@ class smisconn():
 
     def Associators(self, ObjectName, **params):
         comps = []
-        for i in range(1,3):
+        for i in range(3):
             try:
                 comps = self.conn.Associators(ObjectName, **params)
                 break
             except Exception, e:
                 logger.warn("Failed to Associators {0}",e.message)
+                time.sleep(5)
         return comps
 
     def AssociatorNames(self, ObjectName, **params):
         names = []
-        for i in range(1,3):
+        for i in range(3):
             try:
                 names = self.conn.AssociatorNames(ObjectName, **params)
                 break
@@ -51,7 +52,7 @@ class smisconn():
 
     def References(self, ObjectName, **params):
         refs = []
-        for i in range(1,3):
+        for i in range(3):
             try:
                 refs = self.conn.References(ObjectName, **params)
                 break
@@ -61,7 +62,7 @@ class smisconn():
 
     def EnumerateClassNames(self, namespace=None, **params):
         cnames = []
-        for i in range(1,3):
+        for i in range(3):
             try:
                 cnames = self.conn.EnumerateClassNames(namespace=namespace, **params)
                 break

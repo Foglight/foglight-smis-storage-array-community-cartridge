@@ -12,7 +12,7 @@ from pywbemReq.cim_types import *
 
 from urllib3.exceptions import SSLError as _SSLError
 
-logger = foglight.logging.get_logger("smis-agent")
+logger = foglight.logging.get_logger("smisutil")
 
 def getRegisteredProfiles(_conn):
     kProfilePropList = ["InstanceID", "RegisteredVersion", "RegisteredName"]
@@ -570,28 +570,26 @@ def getPoolVolumesMap(conn, ps_array, pools, supportedViews, extents):
 
 def getPoolDiskMap(conn, pools, disks):
     _conn = smisconn(conn)
-    diskExtentsMap = __getDiskExtentsMap(_conn, disks)
+    disk_extents_map = __getDiskExtentsMap(_conn, disks)
 
-    poolDiskMap = {}
+    pool_disk_map = {}
     all_class_names = getClassNames(conn, conn.default_namespace, None)
     has_disk_drive_class = {"CIM_ConcreteDependency", "CIM_DiskDrive"}.issubset(all_class_names)
     for p in pools:
-        isPrimordial = p.get("Primordial")
-        if isPrimordial is None:
+        is_primordial = p.get("Primordial")
+        if is_primordial is None:
             continue
 
-        poolDisks = []
+        pool_disks = []
         if has_disk_drive_class:
-            poolDisks = _conn.AssociatorNames(p.path,
+            pool_disks = _conn.AssociatorNames(p.path,
                             AssocClass="CIM_ConcreteDependency",
                             ResultClass="CIM_DiskDrive",
                             Role="Dependent",
                             ResultRole="Antecedent")
-            # print("poolDisks: ", len(poolDisks))
-            poolDiskMap[p.get("InstanceID")] = poolDisks
+            pool_disk_map[p.get("InstanceID")] = pool_disks
 
-        if len(poolDisks) <= 0:
-
+        if len(pool_disks) <= 0:
             poolDiskExtentPaths = _conn.AssociatorNames(p.path,
                             AssocClass="CIM_ConcreteComponent",
                             ResultClass="CIM_StorageExtent",
@@ -600,13 +598,13 @@ def getPoolDiskMap(conn, pools, disks):
             # print("poolDiskExtentPaths: ", len(poolDiskExtentPaths))
             diskPaths = []
             for extentPath in poolDiskExtentPaths:
-                for diskPath in diskExtentsMap.keys():
-                    if diskExtentsMap.get(diskPath).__contains__(extentPath):
+                for diskPath in disk_extents_map.keys():
+                    if disk_extents_map.get(diskPath).__contains__(extentPath):
                         if not diskPaths.__contains__(diskPath):
                             diskPaths.append(diskPath)
 
-            poolDiskMap[p.get("InstanceID")] = diskPaths
-    return poolDiskMap
+            pool_disk_map[p.get("InstanceID")] = diskPaths
+    return pool_disk_map
 
 
 def getMaskingMappingViews(conn, array):

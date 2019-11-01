@@ -14,10 +14,11 @@ import fsm.storage
 from java.util import ArrayList
 
 from smisutil import *
+from smis_asp import SanASP
 
 # Set up a logger for this Agent.
 logger = foglight.logging.get_logger("smis-agent")
-
+asp = SanASP()
 
 def processArray(sanNasModel, cim_array):
     # Here is the array we're creating.
@@ -176,7 +177,7 @@ def processVolumes(array, cim_volumes, poolsMap):
 
 def getProtection(rule):
     result = rule
-    if None == result:
+    if result is None:
         result = "(unknown)"
     return result
 '''
@@ -247,7 +248,7 @@ class SanCorrelationPath():
 def processITLs(array, ps_array, cim_volumeMappingSPCs, volumeStats):
     itl0s = {}
     itl1s = {}
-    is_unity = false
+    is_unity = False
     if ps_array.get("Product") is not None:
         is_unity = ps_array.get("Product").startswith("Unity")
 
@@ -599,10 +600,12 @@ def processVolumeStats(array, volumeStats, lastStats, _tracker, clockTickInterva
                 if ioTimeCounter > 0 and opsTotal > 0:
                     volume.set_metric("latencyTotal", ioTimeCounter / opsTotal * clockTickInterval / 1000)
 
-                durationTimeCounter = durationInt * 10^6 / clockTickInterval
+                durationTimeCounter = durationInt * 1000000
                 if (None == idleTimeCounter or 0 == idleTimeCounter) and durationTimeCounter > ioTimeCounter:
                     idleTimeCounter = durationTimeCounter - ioTimeCounter
                 busyPercent = getBusyPercent(ioTimeCounter, abs(idleTimeCounter))
+                # if ioTimeCounter != 0:
+                #     logger.debug("ioTimeCounter:{0}, idleTimeCount:{1}, busyPercent:{2}, durationTimeCounter:{3}", ioTimeCounter, idleTimeCounter, busyPercent, durationTimeCounter)
                 if None != busyPercent:
                     volume.set_metric("busy", busyPercent)
 
@@ -704,10 +707,11 @@ def processDiskStats(array, diskStats, lastStats, _tracker, clockTickInterval):
                 if ioTimeCounter > 0 and opsTotal > 0:
                     disk.set_metric("latencyTotal", ioTimeCounter / opsTotal * clockTickInterval / 1000)
 
-                durationTimeCounter = durationInt * 10^6 / clockTickInterval
+                durationTimeCounter = durationInt * 1000000
                 if (None == idleTimeCounter or 0 == idleTimeCounter) and durationTimeCounter > ioTimeCounter:
                     idleTimeCounter = durationTimeCounter - ioTimeCounter
                 busyPercent = getBusyPercent(ioTimeCounter, abs(idleTimeCounter))
+
                 if None != busyPercent:
                     disk.set_metric("busy", busyPercent)
 
@@ -956,13 +960,13 @@ def __str2datetime(str):
         return None
 
 def __getDuration(stat, lastStat):
-    durationInt = 1
+    durationInt = asp.performance_frequency.seconds
     if stat is not None and lastStat is not None:
         st1 = stat.get("StatisticTime")
         st0 = lastStat.get("StatisticTime")
 
         if st1 is None or st0 is None:
-            return 3000
+            return durationInt
 
         if isinstance(st1, basestring):
             d1 = __str2datetime(st1)
@@ -977,11 +981,9 @@ def __getDuration(stat, lastStat):
 
         if None != d1 and None != d0:
             durationInt = (d1 - d0).seconds
-        else:
-            durationInt = 300
 
         if durationInt == 0:
-            durationInt = 300
+            durationInt = asp.performance_frequency.seconds
     #TODO collection interval
 
     # print('durationInt: ', durationInt)
