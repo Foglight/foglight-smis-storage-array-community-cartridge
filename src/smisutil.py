@@ -188,6 +188,8 @@ def getControllers(conn, ps_array):
             continue
         if c.classname.lower().__contains__("nodepairsystem"):
             continue
+        if arrayClassName.startswith("Nex_") and not c.classname.__contains__("StorageControllerSystem"):
+            continue
 
         if c.classname.startswith("HPEVA"):
             c.path.__delitem__("Name")

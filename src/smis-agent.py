@@ -83,7 +83,8 @@ def collect_inventory(conn):
         # TODO getStorageTiers, memberToTier, volumeToTier, parityGroups
 
         if controllers:
-            logger.debug("controller: {0}", controllers[0].tomof())
+            for ctl in controllers:
+                logger.debug("controller: {0}", ctl.tomof())
         if fcPorts:
             logger.info("fcPorts[0]: {0}", fcPorts[0].tomof())
         if iscsiPorts:

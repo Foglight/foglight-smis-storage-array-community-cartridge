@@ -2,47 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="57031d5b-1335-4ba1-83b7-beab461b924d" name="Default" comment="">
-      <change afterPath="$PROJECT_DIR$/src/smis-perf.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/artifacts/SMISStorageAgent-1_5_0.car" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/SMISStorageAgent-1_5_0.car" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/agent-collectors.json" beforeDir="false" afterPath="$PROJECT_DIR$/config/agent-collectors.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/asp-3par.json" beforeDir="false" afterPath="$PROJECT_DIR$/bak/asp-3par.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/asp-3par8400.json" beforeDir="false" afterPath="$PROJECT_DIR$/bak/asp-3par8400.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/asp-Tintri.json" beforeDir="false" afterPath="$PROJECT_DIR$/bak/asp-Tintri.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/asp-ams1.json" beforeDir="false" afterPath="$PROJECT_DIR$/bak/asp-ams1.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/asp-clariion.json" beforeDir="false" afterPath="$PROJECT_DIR$/bak/asp-clariion.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/asp-clariion1.json" beforeDir="false" afterPath="$PROJECT_DIR$/bak/asp-clariion1.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/asp-clariion2.json" beforeDir="false" afterPath="$PROJECT_DIR$/bak/asp-clariion2.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/asp-compellent.json" beforeDir="false" afterPath="$PROJECT_DIR$/bak/asp-compellent.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/asp-dothill.json" beforeDir="false" afterPath="$PROJECT_DIR$/bak/asp-dothill.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/asp-emc1.json" beforeDir="false" afterPath="$PROJECT_DIR$/bak/asp-emc1.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/asp-eva1.json" beforeDir="false" afterPath="$PROJECT_DIR$/bak/asp-eva1.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/asp-fujitsu.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/asp-fujitsu2.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/asp-fujitsu3.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/asp-hds-ams2100.json" beforeDir="false" afterPath="$PROJECT_DIR$/bak/asp-hds-ams2100.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/asp-hds-vsp-2.json" beforeDir="false" afterPath="$PROJECT_DIR$/bak/asp-hds-vsp-2.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/asp-hds-vsp.json" beforeDir="false" afterPath="$PROJECT_DIR$/bak/asp-hds-vsp.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/asp-hds1.json" beforeDir="false" afterPath="$PROJECT_DIR$/bak/asp-hds1.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/asp-hpp2000-2.json" beforeDir="false" afterPath="$PROJECT_DIR$/bak/asp-hpp2000-2.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/asp-hpp2000.json" beforeDir="false" afterPath="$PROJECT_DIR$/bak/asp-hpp2000.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/asp-huawei.json" beforeDir="false" afterPath="$PROJECT_DIR$/bak/asp-huawei.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/asp-huawei2.json" beforeDir="false" afterPath="$PROJECT_DIR$/bak/asp-huawei2.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/asp-huawei3.json" beforeDir="false" afterPath="$PROJECT_DIR$/bak/asp-huawei3.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/asp-huawei4.json" beforeDir="false" afterPath="$PROJECT_DIR$/bak/asp-huawei4.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/asp-netapp-7mode.json" beforeDir="false" afterPath="$PROJECT_DIR$/bak/asp-netapp-7mode.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/asp-netapp.json" beforeDir="false" afterPath="$PROJECT_DIR$/bak/asp-netapp.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/asp-purestorage.json" beforeDir="false" afterPath="$PROJECT_DIR$/bak/asp-purestorage.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/asp-synogy.json" beforeDir="false" afterPath="$PROJECT_DIR$/bak/asp-synogy.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/asp-unity.json" beforeDir="false" afterPath="$PROJECT_DIR$/bak/asp-unity.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/asp-usp1.json" beforeDir="false" afterPath="$PROJECT_DIR$/bak/asp-usp1.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/asp-usp2.json" beforeDir="false" afterPath="$PROJECT_DIR$/bak/asp-usp2.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/asp-vmax.json" beforeDir="false" afterPath="$PROJECT_DIR$/bak/asp-vmax.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/asp-vnx.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/asp-vnx1.json" beforeDir="false" afterPath="$PROJECT_DIR$/bak/asp-vnx1.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/smis-agent.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/smis-agent.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/smis_processors.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/smis_processors.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/smisconn.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/smisconn.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/smisutil.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/smisutil.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -66,17 +27,17 @@
     <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
   <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="D:\C\src\Python\foglight-smis-storage-array-community-cartridge\bak" />
+      <recent name="C:\src\Python\smisarray\config" />
+      <recent name="C:\src\Python\smisarray\bak" />
+    </key>
     <key name="CopyFile.RECENT_KEYS">
       <recent name="D:\C\src\Python\foglight-smis-storage-array-community-cartridge\config" />
       <recent name="D:\C\src\Python\foglight-smis-storage-array-community-cartridge\bin" />
       <recent name="D:\C\src\Python\foglight-smis-storage-array-community-cartridge\src" />
       <recent name="C:\src\Python\foglight-smis-storage-array-community-cartridge\src" />
       <recent name="C:\src\Python\foglight-smis-storage-array-community-cartridge\config" />
-    </key>
-    <key name="MoveFile.RECENT_KEYS">
-      <recent name="D:\C\src\Python\foglight-smis-storage-array-community-cartridge\bak" />
-      <recent name="C:\src\Python\smisarray\config" />
-      <recent name="C:\src\Python\smisarray\bak" />
     </key>
   </component>
   <component name="RunDashboard">
