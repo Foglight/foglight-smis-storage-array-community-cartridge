@@ -155,8 +155,8 @@ def processVolumes(array, cim_volumes, poolsMap):
                 if 0 < consumedBytes:
                     lun.set_property("advertisedSize", long(consumedBytes / 1024 / 1024))
 
-            logger.debug("lun.advertisedSize : {0} lun.size : {1}",
-                         lun.get_property("advertisedSize"), lun.get_property("size"))
+            # logger.debug("lun.advertisedSize : {0} lun.size : {1}",
+            #              lun.get_property("advertisedSize"), lun.get_property("size"))
 
             rule = None
             if rule is None and v.has_key("RaidLevel"):
@@ -167,7 +167,7 @@ def processVolumes(array, cim_volumes, poolsMap):
             protection = getProtection(rule)
             lun.set_property("protection", protection)
 
-            logger.debug("Lun {0} protection: {1}", v["DeviceID"], protection)
+            # logger.debug("Lun {0} protection: {1}", v["DeviceID"], protection)
             # RawCapacity
         except Exception, e:
             logger.error(e.message)
@@ -415,7 +415,8 @@ def processControllerStats(array, controllerStats, lastStats, _tracker):
 
             ioTimeCounter = __getStatValue('IOTimeCounter', cStat, lastStat, 1)
             if ioTimeCounter > 0 and opsTotal > 0:
-                controller.set_metric("latencyTotalBlock", ioTimeCounter / opsTotal)
+                controller.set_metric("latencyTotalBlock", ioTimeCounter * 1.0 / opsTotal)
+            # logger.debug("latencyTotalBlock: {0}", ioTimeCounter * 1.0 / opsTotal)
 
             state = str(convertCIMOperationalStatus(cStat.get("OperationalStatus")))
             controller.set_state(state)
