@@ -277,6 +277,61 @@ def getFcPorts(conn, ps_array, controllers):
     return ports
 
 
+def get_ip_ports(conn, ps_array, controllers):
+    _conn = smisconn(conn)
+    iscsi_ports = []
+    if len(controllers) <= 0:
+        return iscsi_ports
+
+    port_map = {}
+    endpoint_map = {}
+    endpoint_port_map = {}
+    ports = []
+    endpoints = []
+    try:
+        for ct in controllers:
+            ports = _conn.Associators(ct.path,
+                                    AssocClass="CIM_SystemDevice",
+                                    ResultClass="CIM_EthernetPort")
+            if ports:
+                for p in ports:
+                    port_map[p.path.get("DeviceID")] = p
+
+        ads = _conn.EnumerateInstances("CIM_DeviceSAPImplementation", namespace=ps_array.path.namespace)
+        for ad in ads:
+            endpoint_port_map[ad.get("Dependent").get("Name")] = ad.get("Antecedent")
+            # endpoint_port_map[ad.get("Antecedent").get("DeviceID")] = ad.get("Dependent")
+            # logger.debug("endpoint path {0}", ad.get("Dependent"))
+
+        _operationalStatusValues = getOperationalStatusValues(conn, ps_array, ports[0].classname)
+
+        for ct in controllers:
+            endpoints = _conn.Associators(ct.path,
+                                    AssocClass="CIM_HostedAccessPoint",
+                                    ResultClass="CIM_iSCSIProtocolEndpoint")
+            if endpoints:
+                for ep in endpoints:
+                    # logger.debug(ep.path.get("Name"))
+                    port_path = endpoint_port_map[ep.path.get("Name")]
+                    if port_path is None: continue
+                    port = port_map[port_path.get("DeviceID")]
+                    if port.has_key("OperationalStatus"):
+                        status = convertOperationalStatusValues(port['OperationalStatus'], _operationalStatusValues)
+                        port.__setitem__("OperationalStatus", status)
+                    port.__setitem__("iqn", ep.path.get("Name"))
+                    port.__setitem__("ControllerName", ct.get("ElementName"))
+                    port.__setitem__("Name", port.get("PermanentAddress"))
+                    # port.__setitem__("Name", port.get("DeviceID"))
+                    # logger.debug("endpoint {0}", ep.tomof())
+                    iscsi_ports.append(port)
+
+    except Exception as err:
+        logger.error("getIscisiPorts Error: %s" % err.message)
+
+    logger.info("iscsi ports: {0}", len(iscsi_ports))
+    return iscsi_ports
+
+
 def getIscisiPorts(conn, ps_array, controllers):
     _conn = smisconn(conn)
     iscsi_ports = []
@@ -890,7 +945,8 @@ def getPortStatistics(conn, port, statAssociations, statObjectMap):
     if len(port_stat) > 0:
         port_stat[0].__setitem__("statID", _get_state_id(port))
         port_stat[0].__setitem__("OperationalStatus", port["OperationalStatus"])
-        port_stat[0].__setitem__("Speed", port["Speed"])
+        if port.has_key("Speed"):
+            port_stat[0].__setitem__("Speed", port["Speed"])
         if port.has_key("MaxSpeed"):
             port_stat[0].__setitem__("MaxSpeed", port["MaxSpeed"])
 
@@ -898,16 +954,19 @@ def getPortStatistics(conn, port, statAssociations, statObjectMap):
 
 def _get_state_id(port):
     stat_id = None
-    if port.has_key("PermanentAddress"):
-        stat_id = port["PermanentAddress"]
-    else:
-        wwn = port["Name"]
-        if wwn is not None:
-            comma = wwn.index(',')
-            if 0 < comma:
-                wwn = wwn[0:comma]
-            stat_id = wwn
-    logger.debug("port {0}", stat_id)
+    try:
+        if port.has_key("PermanentAddress"):
+            stat_id = port["PermanentAddress"]
+        else:
+            wwn = port["Name"]
+            if wwn is not None:
+                comma = wwn.find(',')
+                if 0 < comma:
+                    wwn = wwn[0:comma]
+                stat_id = wwn
+        logger.debug("port {0}", stat_id)
+    except Exception,e:
+        logger.error(traceback.format_exc(e))
     return stat_id
 
 def getAllDiskStatistics(conn, disks, statAssociations, statObjectMap, class_names):

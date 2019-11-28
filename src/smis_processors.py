@@ -78,7 +78,7 @@ def processIscsiPorts(array, cim_iscsiPorts):
             logger.warn("ISCSI Port name is None")
             continue
 
-        comma = wwn.index(',')
+        comma = wwn.find(',')
         if 0 < comma:
             wwn = wwn[0:comma]
 
@@ -88,12 +88,15 @@ def processIscsiPorts(array, cim_iscsiPorts):
         else:
             port.set_property("name", p.get("Name"))
 
+        if p.has_key("iqn"):
+            port.set_property("alias", p.get("iqn"))
+
         controller_name = p.get("ControllerName")
         if controller_name is not None:
             controller = array.get_controller(controller_name.upper())
             port.associate_with(controller)
 
-        logger.debug("ISCSI port ", p.get("name") )
+        # logger.debug("ISCSI port ", p.get("name") )
     return None
 
 
@@ -451,6 +454,7 @@ def processFcPortStats(array, fcPortStats, lastStats, _tracker):
             if pStat.get("MaxSpeed") is not None:
                 maxSpeed= pStat.get("MaxSpeed") / 1024 / 1024
 
+            # logger.debug("currentSpeedMb:{0}", pStat.get("Speed"))
             port.set_metric("currentSpeedMb", currentSpeed)
             port.set_metric("maxSpeedMb", maxSpeed)
 
@@ -501,12 +505,6 @@ def processIscsiPortStats(array, iscsiPortStats, lastStats, _tracker):
                 _tracker.request_inventory()
                 continue
 
-            currentSpeed = pStat.get("Speed") / 1024 / 1024
-            maxSpeed = pStat.get("MaxSpeed") / 1024 / 1024
-
-            port.set_metric("currentSpeedMb", currentSpeed)
-            port.set_metric("maxSpeedMb", maxSpeed)
-
             state = str(convertCIMOperationalStatus(pStat.get("OperationalStatus")))
             port.set_state(state)
 
@@ -518,10 +516,16 @@ def processIscsiPortStats(array, iscsiPortStats, lastStats, _tracker):
             port.set_metric("bytesWrite", bytesWrite)
             port.set_metric("bytesTotal", bytesTotal)
 
-            port.set_metric("bytesReadUtilization",
-                            computeUtilization(bytesRead, currentSpeed, durationInt))
-            port.set_metric("bytesWriteUtilization",
-                            computeUtilization(bytesWrite, currentSpeed, durationInt))
+            # currentSpeed = pStat.get("Speed") / 1024 / 1024
+            # maxSpeed = pStat.get("MaxSpeed") / 1024 / 1024
+            #
+            # port.set_metric("currentSpeedMb", currentSpeed)
+            # port.set_metric("maxSpeedMb", maxSpeed)
+            #
+            # port.set_metric("bytesReadUtilization",
+            #                 computeUtilization(bytesRead, currentSpeed, durationInt))
+            # port.set_metric("bytesWriteUtilization",
+            #                 computeUtilization(bytesWrite, currentSpeed, durationInt))
 
             port.set_metric("opsRead",
                             __getStatValue('ReadIOs', pStat, lastStat, durationInt))
@@ -702,11 +706,16 @@ def processDiskStats(array, diskStats, lastStats, _tracker, clockTickInterval):
                     clockTickInterval = 1
 
                 if readIOTimeCounter > 0 and opsRead > 0:
-                    disk.set_metric("latencyRead", readIOTimeCounter / opsRead * clockTickInterval / 1000)
+                    disk.set_metric("latencyRead", readIOTimeCounter * 1.0 / opsRead * clockTickInterval / 1000)
                 if writeIOTimeCounter > 0 and opsWrite > 0:
-                    disk.set_metric("latencyWrite", writeIOTimeCounter / opsWrite * clockTickInterval / 1000)
+                    disk.set_metric("latencyWrite", writeIOTimeCounter * 1.0 / opsWrite * clockTickInterval / 1000)
                 if ioTimeCounter > 0 and opsTotal > 0:
-                    disk.set_metric("latencyTotal", ioTimeCounter / opsTotal * clockTickInterval / 1000)
+                    disk.set_metric("latencyTotal", ioTimeCounter * 1.0 / opsTotal * clockTickInterval / 1000)
+                # logger.debug("disk {0} latencyRead: {1}", statID,
+                #              readIOTimeCounter * 1.0 / opsRead )
+                # logger.debug("disk {0} latencyTotal: {1}", statID,
+                #              writeIOTimeCounter * 1.0 / opsWrite )
+                # logger.debug("disk {0} latencyTotal: {1}", statID, ioTimeCounter * 1.0 / opsTotal )
 
                 durationTimeCounter = durationInt * 1000000
                 if (None == idleTimeCounter or 0 == idleTimeCounter) and durationTimeCounter > ioTimeCounter:

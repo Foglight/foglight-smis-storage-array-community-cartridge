@@ -8,7 +8,7 @@ set SDKLIBDIR=%SDKDIR%\lib
 set HARNESS=%SDKDIR%\python-sdk\bin\script-harness.bat
 cd ..
 set AGENTDIR=%cd%
-set CONFIGDIR=%AGENTDIR%\config
+set CONFIGDIR=%AGENTDIR%\bak
 
 set PROPERTIES=%CONFIGDIR%\agent-properties.json
 if not "%1" == "" set PROPERTIES=%CONFIGDIR%\asp-%1.json

@@ -101,6 +101,8 @@ def collect_performance(conn):
             logger.debug("controllerStatistics: {0}", controllerStats[0].tomof())
         if len(fcPortStats) > 0:
             logger.debug("fcPortStatistics: {0}", fcPortStats[0].tomof())
+        if len(iscsiPortStats) > 0:
+            logger.debug("iscsiPortStatistics: {0}", iscsiPortStats[0].tomof())
         if len(volumeStats) > 0:
             for vs in volumeStats:
                 if vs.has_key('KBytesWritten') and vs['KBytesWritten'] > 0:
@@ -158,6 +160,8 @@ def execute_request():
         if tracker.last_inventory:
             collect_performance(conn)
             tracker.record_performance()
+        else:
+            logger.info("inventory collection is required")
 
     # handle any exception
     except CIMError as err:

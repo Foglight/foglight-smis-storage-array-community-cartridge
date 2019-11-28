@@ -56,7 +56,12 @@ def collect_inventory(conn):
 
         controllers = getControllers(conn, ps_array)
         fcPorts = getFcPorts(conn, ps_array, controllers)
-        iscsiPorts = getIscisiPorts(conn, ps_array, controllers)
+        iscsiPorts = []
+        # if ps_array.get("Vendor") == "huawei":
+        #     iscsiPorts = get_ip_ports(conn, ps_array, controllers)
+        # else:
+        iscsiPorts = get_ip_ports(conn, ps_array, controllers)
+        # iscsiPorts = getIscisiPorts(conn, ps_array, controllers)
         pools = getPools(conn, ps_array)
         disks = getDisks(conn, ps_array, controllers, supportedViews)
         extents = {}
@@ -88,7 +93,8 @@ def collect_inventory(conn):
         if fcPorts:
             logger.info("fcPorts[0]: {0}", fcPorts[0].tomof())
         if iscsiPorts:
-            logger.debug("iscisiPorts[0]: {0}", iscsiPorts[0].tomof())
+            for ipp in iscsiPorts:
+                logger.debug("iscisiPorts[0]: {0}", ipp.tomof())
         if pools:
             logger.debug("pools[0]: {0}", pools[0].tomof())
             # for p in pools:
