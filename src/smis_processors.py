@@ -708,15 +708,22 @@ def processDiskStats(array, diskStats, lastStats, _tracker, clockTickInterval):
             disk.set_metric("latencyTotal", latency_total)
 
             if None != clockTickInterval and clockTickInterval > 0:
-                if clockTickInterval >= 1000000:
-                    clockTickInterval = 1
+                clock_in_millisecond = 1
+                if clockTickInterval > 1000000:
+                    clock_in_millisecond = 1
+                else:
+                    clock_in_millisecond = clockTickInterval / 1000
 
                 if readIOTimeCounter > 0 and opsRead > 0:
-                    disk.set_metric("latencyRead", readIOTimeCounter * 1.0 / opsRead * clockTickInterval / 1000)
+                    latency_read = (readIOTimeCounter * 1.0 / opsRead) * clock_in_millisecond
+                    disk.set_metric("latencyRead", latency_read)
                 if writeIOTimeCounter > 0 and opsWrite > 0:
-                    disk.set_metric("latencyWrite", writeIOTimeCounter * 1.0 / opsWrite * clockTickInterval / 1000)
+                    latency_write = (writeIOTimeCounter * 1.0 / opsWrite) * clock_in_millisecond
+                    disk.set_metric("latencyWrite", latency_write)
                 if ioTimeCounter > 0 and opsTotal > 0:
-                    disk.set_metric("latencyTotal", ioTimeCounter * 1.0 / opsTotal * clockTickInterval / 1000)
+                    latency_total = (ioTimeCounter * 1.0 / opsTotal) * clock_in_millisecond
+                    disk.set_metric("latencyTotal", latency_total)
+
                 # logger.debug("disk {0} latencyRead: {1}", statID,
                 #              readIOTimeCounter * 1.0 / opsRead )
                 # logger.debug("disk {0} latencyTotal: {1}", statID,
