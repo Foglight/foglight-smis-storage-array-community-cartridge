@@ -595,15 +595,21 @@ def processVolumeStats(array, volumeStats, lastStats, _tracker, clockTickInterva
             volume.set_metric("latencyTotal", latency_total)
 
             if None != clockTickInterval and clockTickInterval > 0:
-                if clockTickInterval >= 1000000:
-                    clockTickInterval = 1
+                clock_in_millisecond = 1
+                if clockTickInterval > 1000000:
+                    clock_in_millisecond = 1
+                else:
+                    clock_in_millisecond = clockTickInterval / 1000
 
                 if readIOTimeCounter > 0 and opsRead > 0:
-                    volume.set_metric("latencyRead", readIOTimeCounter / opsRead * clockTickInterval / 1000)
+                    latency_read = (readIOTimeCounter * 1.0 / opsRead) * clock_in_millisecond
+                    volume.set_metric("latencyRead", latency_read)
                 if writeIOTimeCounter > 0 and opsWrite > 0:
-                    volume.set_metric("latencyWrite", writeIOTimeCounter / opsWrite * clockTickInterval / 1000)
+                    latency_write = (writeIOTimeCounter * 1.0 / opsWrite) * clock_in_millisecond
+                    volume.set_metric("latencyWrite", latency_write)
                 if ioTimeCounter > 0 and opsTotal > 0:
-                    volume.set_metric("latencyTotal", ioTimeCounter / opsTotal * clockTickInterval / 1000)
+                    latency_total = (ioTimeCounter * 1.0 / opsTotal) * clock_in_millisecond
+                    volume.set_metric("latencyTotal", latency_total)
 
                 durationTimeCounter = durationInt * 1000000
                 if (None == idleTimeCounter or 0 == idleTimeCounter) and durationTimeCounter > ioTimeCounter:
