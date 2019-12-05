@@ -711,7 +711,7 @@ def processDiskStats(array, diskStats, lastStats, _tracker, clockTickInterval):
                 clock_in_millisecond = 1
                 if clockTickInterval > 1000000:
                     clock_in_millisecond = 1
-                else:
+                elif clockTickInterval > 1000:
                     clock_in_millisecond = clockTickInterval / 1000
 
                 if readIOTimeCounter > 0 and opsRead > 0:
@@ -724,19 +724,21 @@ def processDiskStats(array, diskStats, lastStats, _tracker, clockTickInterval):
                     latency_total = (ioTimeCounter * 1.0 / opsTotal) * clock_in_millisecond
                     disk.set_metric("latencyTotal", latency_total)
 
-                # logger.debug("disk {0} latencyRead: {1}", statID,
-                #              readIOTimeCounter * 1.0 / opsRead )
-                # logger.debug("disk {0} latencyTotal: {1}", statID,
-                #              writeIOTimeCounter * 1.0 / opsWrite )
-                # logger.debug("disk {0} latencyTotal: {1}", statID, ioTimeCounter * 1.0 / opsTotal )
+                # logger.debug("disk {0} latencyRead: {1} {2} {3}", statID, latency_read, readIOTimeCounter, opsRead)
+                # logger.debug("disk {0} latency_write: {1} {2} {3}", statID, latency_write, writeIOTimeCounter, opsWrite)
+                # logger.debug("disk {0} latencyTotal: {1}", statID, latency_total))
 
-                durationTimeCounter = durationInt * 1000000
-                if (None == idleTimeCounter or 0 == idleTimeCounter) and durationTimeCounter > ioTimeCounter:
-                    idleTimeCounter = durationTimeCounter - ioTimeCounter
-                busyPercent = getBusyPercent(ioTimeCounter, abs(idleTimeCounter))
-
-                if None != busyPercent:
-                    disk.set_metric("busy", busyPercent)
+                if dStat.has_key("DiskIdleTimeCounter") and dStat.has_key("DiskElapsedTimeCounter"): #huawei
+                    diskIdleTimeCounter = __getStatValue('DiskIdleTimeCounter', dStat, lastStat, 1)
+                    diskElapsedTimeCounter = __getStatValue('DiskElapsedTimeCounter', dStat, lastStat, 1)
+                    busy_percent = (diskElapsedTimeCounter - diskIdleTimeCounter) * 100.0 / diskElapsedTimeCounter
+                else:
+                    durationTimeCounter = durationInt * 1000000
+                    if (None == idleTimeCounter or 0 == idleTimeCounter) and durationTimeCounter > ioTimeCounter:
+                        idleTimeCounter = durationTimeCounter - ioTimeCounter
+                    busy_percent = getBusyPercent(ioTimeCounter, abs(idleTimeCounter))
+                if None != busy_percent:
+                    disk.set_metric("busy", busy_percent)
 
         except Exception, e:
             logger.error(traceback.format_exc())
