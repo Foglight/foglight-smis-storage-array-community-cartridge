@@ -1028,6 +1028,7 @@ def getVolumeStatistics(conn, volume, statAssociations, statObjectMap):
         volume_stat[0].__setitem__("uuid", volume["Name"])
         volume_stat[0].__setitem__("statID", volume["DeviceID"])
         volume_stat[0].__setitem__("OperationalStatus", volume["OperationalStatus"])
+        volume_stat[0].__setitem__("HealthState", volume["HealthState"])
         volume_stat[0].__setitem__("BlockSize", volume["BlockSize"])
         volume_stat[0].__setitem__("ConsumableBlocks", volume["ConsumableBlocks"])
         volume_stat[0].__setitem__("NumberOfBlocks", volume["NumberOfBlocks"])

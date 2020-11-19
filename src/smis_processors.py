@@ -541,6 +541,7 @@ def processIscsiPortStats(array, iscsiPortStats, lastStats, _tracker):
 
 def processVolumeStats(array, volumeStats, lastStats, _tracker, clockTickInterval):
     lastStatMap = {s['statID']: s for s in lastStats}
+    _product = array.get_property("Product")
 
     for vStat in volumeStats:
         try:
@@ -558,8 +559,14 @@ def processVolumeStats(array, volumeStats, lastStats, _tracker, clockTickInterva
                 _tracker.request_inventory()
                 continue
 
-            state = str(convertCIMOperationalStatus(vStat.get("OperationalStatus")))
+            if _product != 'PURESTORAGE_ArrayProduct':
+                state = str(convertCIMHealthState(vStat.get("HealthState")))
+            else:
+                state = str(convertCIMOperationalStatus(vStat.get("OperationalStatus")))
             volume.set_state(state)
+
+            if state != "0":
+                logger.info("the state of lun {0} is {1}", volume.get_property("name"), state)
 
             volume.set_metric("bytesRead",
                               __getStatValue('KBytesRead', vStat, lastStat, durationInt, 1024))
@@ -882,6 +889,19 @@ class PerfStates(object):
     """
     NoInformation = 15
 
+
+def convertCIMHealthState(healthState):
+    state = PerfStates.Normal
+    if healthState is None:
+        return state
+    if healthState == 0:
+        PerfStates.NoInformation
+    elif healthState == 5:
+        state = PerfStates.Normal
+    else:
+        state = PerfStates.Failed
+    return state
+
 def convertCIMOperationalStatus(opStats):
     if None == opStats or 0 >= len(opStats):
         return PerfStates.Normal
@@ -919,10 +939,13 @@ def convertCIMOperationalStatus(opStats):
                 break
             elif opStat in ("OK", "DMTF Reserved", "Vendor Reserved"):
                 state = PerfStates.Normal
+                break
             elif opStat in "Error":
                 state = PerfStates.Failed
+                break
             else:
                 state = PerfStates.Normal
+                break
 
     return state
 

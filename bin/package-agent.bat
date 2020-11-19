@@ -15,7 +15,7 @@ rmdir /s/q state
 
 cd %START%
 call %HARNESS% --create --name="SMISStorageAgent" ^
-          --version "1.5.0" ^
+          --version "1.6.0" ^
           --libraries="%SDKLIBDIR%" ^
           --scripts="%AGENTDIR%"\src ^
           --properties="%CONFIGDIR%"\agent-properties.json ^
@@ -27,4 +27,4 @@ if not exist "./artifacts/" (
     mkdir artifacts
 )
 cd bin
-move SMISStorageAgent-1_5_0.car ../artifacts/
+move SMISStorageAgent-1_6_0.car ../artifacts/
