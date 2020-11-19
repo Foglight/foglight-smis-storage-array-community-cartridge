@@ -559,7 +559,7 @@ def processVolumeStats(array, volumeStats, lastStats, _tracker, clockTickInterva
                 _tracker.request_inventory()
                 continue
 
-            if _product != 'PURESTORAGE_ArrayProduct':
+            if _product is not null and _product.startswith('PURESTORAGE'):
                 state = str(convertCIMHealthState(vStat.get("HealthState")))
             else:
                 state = str(convertCIMOperationalStatus(vStat.get("OperationalStatus")))
