@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+  QUEST SOFTWARE PROPRIETARY INFORMATION
+  
+  This software is confidential.  Quest Software Inc., or one of its
+  subsidiaries, has supplied this software to you under terms of a
+  license agreement, nondisclosure agreement or both.
+  
+  You may not copy, disclose, or use this software except in accordance with
+  those terms.
+  
+  
+  Copyright 2017 Quest Software Inc.
+  ALL RIGHTS RESERVED.
+  
+  QUEST SOFTWARE INC. MAKES NO REPRESENTATIONS OR
+  WARRANTIES ABOUT THE SUITABILITY OF THE SOFTWARE,
+  EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+  TO THE IMPLIED WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE, OR
+  NON-INFRINGEMENT.  QUEST SOFTWARE SHALL NOT BE
+  LIABLE FOR ANY DAMAGES SUFFERED BY LICENSEE
+  AS A RESULT OF USING, MODIFYING OR DISTRIBUTING
+  THIS SOFTWARE OR ITS DERIVATIVES.
+-->
+
+<!DOCTYPE types SYSTEM "../dtd/topology-types.dtd">
+<types>
+
+    <!--
+      The root object for all script agents. This is for server side book-keeping
+    -->
+    <type name="PythonScriptModelRoot" extends="CollectionModelRoot">
+    </type>
+
+    <!-- Marker for all agent model roots. This is for server side book-keeping -->
+    <type name='PythonAgentModelInstance' extends='CollectionModelInstance'/>
+
+    <!--
+    The main object for all Python script agent. Python script agents
+    should only ever create one of these and add their data as child elements
+    to it.
+    -->
+    <type name="PythonScriptModel" extends="PythonScriptModelRoot">
+        <annotation name='DomainRoot'/>
+
+        <!-- Each agent will be represented as one root container in this model -->
+        <property name="rootContainers" type="PythonScriptRootContainer" is-many="true"/>
+    </type>
+
+    <!--
+      Each agent instance will have their own root container where the can
+      add all the information they need.
+    -->
+    <type name="PythonScriptRootContainer" extends="PythonAgentModelInstance">
+        <!-- Each model must have a name that is unique among all models
+             for all python agents -->
+        <property name="name"  type="String" is-identity="true"/>
+
+        <!-- Each model can have zero or more containers where the actual data is kept -->
+        <property name="containers" type="PythonScriptContainer" is-many="true"/>
+    </type>
+
+    <type name="PythonScriptContainer" extends="TopologyObject">
+        <!-- Each container must have a name that is unique among all containers
+             associated with an agent -->
+        <property name="name"  type="String"          is-identity="true"/>
+        <property name="model" type="TopologyObject"  is-identity="true"/>
+
+        <!-- A container can have zero or more items. Items may contain
+             the properties, a metrics, or observations. -->
+        <property name="items" type="PythonScriptItem" is-many="true"/>
+
+        <!-- A container can contain zero or mode child containers as well. -->
+        <property name="children" type="PythonScriptContainer" is-many="true"/>
+    </type>
+
+    <type name="PythonScriptItem" extends="TopologyObject">
+        <!-- The name of property must be unique, but only among other other siblings of the
+             same parent. -->
+        <property name="name"      type="String"                is-identity="true"/>
+        <property name="container" type="PythonScriptContainer" is-identity="true"/>
+
+        <!-- An item may have a property, an observation, or a metric (or a combination of them) -->
+
+        <!-- Properties are values which do not change frequently;
+             such as the name of a host, the size of a disk -->
+        <property name="property_string" type="String" is-containment="false"/>
+        <property name="property_long"   type="Long"   is-containment="false"/>
+        <property name="property_double" type="Double" is-containment="false"/>
+        <property name="property_time"   type="Date"   is-containment="false"/>
+
+        <!-- An observation is a value that could change with each collection;
+             such as the list of logged in users -->
+        <property name="observation_string" type="PythonScriptStringObservation" is-containment="true"/>
+        <property name="observation_long"   type="PythonScriptLongObservation" is-containment="true"/>
+        <property name="observation_double" type="PythonScriptDoubleObservation" is-containment="true"/>
+        <property name="observation_time"   type="PythonScriptTimeObservation" is-containment="true"/>
+
+        <!-- A metric is a specialized numeric observation, with advanced aggregation and
+             graphing support on the server. -->
+        <property name="metric" type="Metric" is-containment="true"/>
+    </type>
+
+    <!--
+      These are intermediate classes that the server requires a definition for,
+      but which the agent does not use
+     -->
+    <type name="PythonScriptStringObservation" extends="ComplexObservation">
+        <property name='current' type='PythonScriptStringObservedValue' is-containment='true' />
+        <property name='latest'  type='PythonScriptStringObservedValue' is-containment='true' />
+        <property name='history' type='PythonScriptStringObservedValue' is-containment='true' is-many='true' />
+    </type>
+
+    <type name="PythonScriptStringObservedValue" extends="ObservedValue">
+        <property name='value' type='String' is-containment='false' is-many='false' />
+    </type>
+
+    <type name="PythonScriptLongObservation" extends="ComplexObservation">
+        <property name='current' type='PythonScriptLongObservedValue' is-containment='true' />
+        <property name='latest'  type='PythonScriptLongObservedValue' is-containment='true' />
+        <property name='history' type='PythonScriptLongObservedValue' is-containment='true' is-many='true' />
+    </type>
+
+    <type name="PythonScriptLongObservedValue" extends="ObservedValue">
+        <property name='value' type='Long' is-containment='false' is-many='false' />
+    </type>
+
+    <type name="PythonScriptDoubleObservation" extends="ComplexObservation">
+        <property name='current' type='PythonScriptDoubleObservedValue' is-containment='true' />
+        <property name='latest'  type='PythonScriptDoubleObservedValue' is-containment='true' />
+        <property name='history' type='PythonScriptDoubleObservedValue' is-containment='true' is-many='true' />
+    </type>
+
+    <type name="PythonScriptDoubleObservedValue" extends="ObservedValue">
+        <property name='value' type='Double' is-containment='false' is-many='false' />
+    </type>
+
+    <type name="PythonScriptTimeObservation" extends="ComplexObservation">
+        <property name='current' type='PythonScriptTimeObservedValue' is-containment='true' />
+        <property name='latest'  type='PythonScriptTimeObservedValue' is-containment='true' />
+        <property name='history' type='PythonScriptTimeObservedValue' is-containment='true' is-many='true' />
+    </type>
+
+    <type name="PythonScriptTimeObservedValue" extends="ObservedValue">
+        <property name='value' type='Date' is-containment='false' is-many='false' />
+    </type>
+
+</types>

@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ Copyright 2019 Dell Inc.
+ ALL RIGHTS RESERVED.
+
+ This file is provided for demonstration and educational uses only.
+ Permission to use, copy, modify and distribute this file for
+ any purpose and without fee is hereby granted, provided that the
+ above copyright notice and this permission notice appear in all
+ copies, and that the name of Dell not be used in
+ advertising or publicity pertaining to this material without
+ the specific, prior written permission of an authorized
+ representative of Dell Inc.
+
+ DELL INC. MAKES NO REPRESENTATIONS OR WARRANTIES ABOUT
+ THE SUITABILITY OF THE  EITHER EXPRESS OR IMPLIED,
+ INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF
+ MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR
+ NON-INFRINGEMENT. DELL SHALL NOT BE LIABLE FOR ANY
+ DAMAGES SUFFERED BY USERS AS A RESULT OF USING, MODIFYING
+ OR DISTRIBUTING THIS OR ITS DERIVATIVES.
+-->
+<foglight-config version="1.0.0" exported-on="2021-01-29T16:42:07.264+0800">
+  <persistable-config-model>
+    <config_id>152d7f89-744b-415e-9e1d-2932846690f0</config_id>
+    <adapter>SMISStorageAgent</adapter>
+    <agent_type>SMISStorageAgent</agent_type>
+    <encoding_system>Foglight4-XML</encoding_system>
+    <config_type>default</config_type>
+    <config_qualifier>template</config_qualifier>
+    <sharing_name />
+    <known_name />
+    <type_id>29253698-0a7f-4aaf-a203-d4dac683369c</type_id>
+    <asp name="primary" type="singleitem">
+      <structure>
+        <field name="collectors" dataType="FUNCTION" paramSelect="collectors_default">
+          <attributes MustEnter="1" PageTitle="Python Script Properties" PageLineNbr="1" />
+          <prompt>Collectors</prompt>
+          <paramdata>collectors</paramdata>
+        </field>
+        <field name="host" dataType="STRING" size="-1">
+          <attributes PageTitle="User-defined Properties" PageLineNbr="1" />
+          <prompt>host</prompt>
+          <paramdata>10.160.0.108</paramdata>
+        </field>
+        <field name="port" dataType="STRING" size="-1">
+          <attributes PageTitle="User-defined Properties" PageLineNbr="2" />
+          <prompt>port</prompt>
+          <paramdata>5989</paramdata>
+        </field>
+        <field name="https" dataType="BOOL">
+          <attributes PageTitle="User-defined Properties" PageLineNbr="3" />
+          <prompt>https</prompt>
+          <paramdata>false</paramdata>
+        </field>
+        <field name="username" dataType="STRING" size="-1">
+          <attributes PageTitle="User-defined Properties" PageLineNbr="4" />
+          <prompt>username</prompt>
+          <paramdata>foglight</paramdata>
+        </field>
+        <field name="password" dataType="STRING" size="-1">
+          <attributes PageTitle="User-defined Properties" PageLineNbr="5" Encrypted="1" />
+          <prompt>password</prompt>
+          <paramdata>foglight</paramdata>
+        </field>
+      </structure>
+      <valuelist />
+    </asp>
+  </persistable-config-model>
+  <persistable-config-model>
+    <config_id>c8b7652c-f6bf-4554-9bfa-38f983202b39</config_id>
+    <adapter>SMISStorageAgent</adapter>
+    <agent_type>SMISStorageAgent</agent_type>
+    <encoding_system>Foglight4-XML</encoding_system>
+    <config_type>default</config_type>
+    <config_qualifier>named</config_qualifier>
+    <sharing_name>collectors</sharing_name>
+    <known_name>collectors_default</known_name>
+    <type_id>e627df19-66ba-4936-a61b-a85caf01fd5f</type_id>
+    <asp name="collectors" knownName="collectors_default" type="list">
+      <structure>
+        <field name="scriptPath" dataType="STRING" size="-1">
+          <attributes MustEnter="1" />
+          <prompt>Script Path</prompt>
+          <paramdata />
+        </field>
+        <field name="interval" dataType="INT">
+          <attributes MustEnter="1" GtEqualZero="1" NotEqualZero="1" />
+          <prompt>Interval</prompt>
+          <paramdata>5</paramdata>
+        </field>
+        <field name="intervalUnit" dataType="OPTION">
+          <attributes MustEnter="1" />
+          <prompt>Interval Unit</prompt>
+          <paramdata>minutes,seconds,hours,days</paramdata>
+        </field>
+      </structure>
+      <valuelist>
+        <row>
+          <value name="scriptPath">smis-agent.py</value>
+          <value name="interval">60</value>
+          <value name="intervalUnit">minutes</value>
+        </row>
+        <row>
+          <value name="scriptPath">smis-perf.py</value>
+          <value name="interval">15</value>
+          <value name="intervalUnit">minutes</value>
+        </row>
+      </valuelist>
+    </asp>
+  </persistable-config-model>
+</foglight-config>

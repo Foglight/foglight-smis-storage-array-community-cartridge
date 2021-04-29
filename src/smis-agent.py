@@ -100,7 +100,10 @@ def collect_inventory(conn):
             # for p in pools:
             #     logger.debug("pool: {0}", p.tomof())
         if disks:
-            logger.info("disks: {0}", disks[0].tomof())
+            # logger.info("disks: {0}", disks[0].tomof())
+            for d in disks:
+                if d.get("ElementName") == 'disk_00.06':
+                    logger.info("disks: {0}", d.tomof())
         if volumes:
             logger.info("volumes[0]: {0}", volumes[0].tomof())
 

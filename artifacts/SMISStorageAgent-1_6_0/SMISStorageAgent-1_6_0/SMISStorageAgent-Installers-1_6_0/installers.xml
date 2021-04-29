@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<installers>
+  <installer name="SMISStorageAgent" version="1.6.0" filename="SMISStorageAgent.gar" type="fglam-client-pkg">
+    <agent-types>
+      <agent-type name="SMISStorageAgent" version="1.6.0" build="1.6.0-202101291642" />
+    </agent-types>
+  </installer>
+</installers>

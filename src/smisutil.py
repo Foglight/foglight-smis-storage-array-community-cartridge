@@ -68,7 +68,13 @@ def getArrays(conn):
 
         if not getProductInfo(conn, m):
             logger.info('Array skipped because no vendor and/or model information found')
-            continue
+            unknown = "Unknown"
+            m.__setitem__("Model", unknown)
+            m.__setitem__("Vendor", unknown)
+            m.__setitem__("Product", unknown)
+            m.__setitem__("SerialID", unknown)
+            m.__setitem__("Version", unknown)
+            # continue
 
         if _operationalStatusValues is None:
             _operationalStatusValues = getOperationalStatusValues(conn, m, m.classname)
@@ -85,37 +91,50 @@ def getProductInfo(conn, ps_array):
                                 AssocClass="CIM_SystemPackaging",
                                 ResultClass="CIM_PhysicalPackage")
     if physpacks is None:
+        logger.warn('No Chassis information found for ComputerSystem {0}', ps_array.get("Name"))
         return False
 
     use_chassis = None
     if len(physpacks) == 1:
         use_chassis = physpacks[0]
     else:
+        logger.info('More than one Chassis associated with ComputerSystem {0}', ps_array.get("Name"))
         for p in physpacks:
             if p.get("ChassisPackageType") in ("17", "22"):
                 use_chassis = p
                 break
         if use_chassis is None and len(physpacks)>0:
+            logger.warn('Valid chassis type not found, using index 0')
             use_chassis = physpacks[0]
 
-    if use_chassis is None:
-        return False
+    products = _conn.Associators(use_chassis.path,
+                                AssocClass="CIM_ProductPhysicalComponent",
+                                ResultClass="CIM_Product")
+    if products is None or len(products) == 0:
+        for p in physpacks:
+            products = _conn.Associators(use_chassis.path,
+                                         AssocClass="CIM_ProductPhysicalComponent",
+                                         ResultClass="CIM_Product")
+            if products is not None and len(products) > 0:
+                break
+        if products is None or len(products) == 0:
+            logger.warn('No Product information found for ComputerSystem {0}', ps_array.get("Name"))
+            return False
 
     model = use_chassis.get("Model")
     if model is not None:
         model = string.replace(model, "Rack Mounted ", "")
         model = string.replace(model, '_', '-')
         ps_array.__setitem__("Model", model)
+    else:
+        logger.warn('Model not found for ComputerSystem {0}', ps_array.get("Name"))
 
-    products = _conn.Associators(use_chassis.path,
-                                AssocClass="CIM_ProductPhysicalComponent",
-                                ResultClass="CIM_Product")
-    if products is None or len(products) == 0:
-        return False
 
     product = products[0]
     vendor = product.get("Vendor")
-    if vendor is not None:
+    if vendor is None:
+        logger.warn('Vendor not found for ComputerSystem {0}', ps_array.get("Name"))
+    else:
         ps_array.__setitem__("Vendor", vendor)
 
     ps_array.__setitem__("Product", product.get("Name"))
@@ -969,17 +988,18 @@ def _get_state_id(port):
         logger.error(traceback.format_exc(e))
     return stat_id
 
-def getAllDiskStatistics(conn, disks, statAssociations, statObjectMap, class_names):
+def getAllDiskStatistics(conn, disks, statAssociations, statObjectMap, class_names, diskStatDicts):
     diskStats = []
     isMediaPresent = {"CIM_MediaPresent", "CIM_StorageExtent"}.issubset(class_names)
     for d in disks:
-        diskStat = getDiskStatistics(conn, d, statAssociations, statObjectMap, isMediaPresent)
+        diskStatDict = diskStatDicts[d["Name"]] if diskStatDicts.has_key(d["Name"]) else None
+        diskStat = getDiskStatistics(conn, d, statAssociations, statObjectMap, isMediaPresent, diskStatDict)
         if len(diskStat) > 0:
             diskStats += diskStat
     logger.info("diskStats: {0}", len(diskStats))
     return diskStats
 
-def getDiskStatistics(conn, disk, statAssociations, statObjectMap, isMediaPresent):
+def getDiskStatistics(conn, disk, statAssociations, statObjectMap, isMediaPresent, diskStatDict):
     _conn = smisconn(conn)
     disk_stat = []
     on_media = False     #TODO if stats for disks are associated with the media on this SMI provider
@@ -1001,38 +1021,50 @@ def getDiskStatistics(conn, disk, statAssociations, statObjectMap, isMediaPresen
             if disk_stat is None or len(disk_stat) <= 0:
                 disk_stat = getStorageStatisticsData(conn, medias[0])
 
+    if len(disk_stat) <= 0 and diskStatDict is not None:
+        disk_stat[0] = diskStatDict
+
     if len(disk_stat) > 0:
+        logger.info("get disk statistics {0} ", disk["DeviceID"])
         disk_stat[0].__setitem__("statID", disk["DeviceID"].upper())
         disk_stat[0].__setitem__("OperationalStatus", disk["OperationalStatus"])
-    logger.info("get disk statistics {0} ", disk["DeviceID"])
+
     return disk_stat
 
 
-def getAllVolumeStatistics(conn, volumes, statAssociations, statObjectMap):
+def getAllVolumeStatistics(conn, volumes, statAssociations, statObjectMap, volumeStatDicts):
     volumeStats = []
     for v in volumes:
-        volumeStat = getVolumeStatistics(conn, v, statAssociations, statObjectMap)
+        volumeStatDict = volumeStatDicts[v["Name"]] if volumeStatDicts.has_key(v["Name"]) else None
+        volumeStat = getVolumeStatistics(conn, v, statAssociations, statObjectMap, volumeStatDict)
         if len(volumeStat) > 0:
             volumeStats += volumeStat
     logger.info("volumeStats: {0}", len(volumeStats))
     return volumeStats
 
 
-def getVolumeStatistics(conn, volume, statAssociations, statObjectMap):
+def getVolumeStatistics(conn, volume, statAssociations, statObjectMap, volumeStatDict):
     volume_stat = getAssociatedStatistics(conn, volume.path, statAssociations, statObjectMap)
 
     if volume_stat is None or len(volume_stat) <= 0:
         volume_stat = getStorageStatisticsData(conn, volume.path)
 
+    if len(volume_stat) <= 0 and volumeStatDict is not None:
+        volume_stat[0] = volumeStatDict
+
     if len(volume_stat) > 0:
         volume_stat[0].__setitem__("uuid", volume["Name"])
         volume_stat[0].__setitem__("statID", volume["DeviceID"])
-        volume_stat[0].__setitem__("OperationalStatus", volume["OperationalStatus"])
-        volume_stat[0].__setitem__("HealthState", volume["HealthState"])
-        volume_stat[0].__setitem__("BlockSize", volume["BlockSize"])
-        volume_stat[0].__setitem__("ConsumableBlocks", volume["ConsumableBlocks"])
-        volume_stat[0].__setitem__("NumberOfBlocks", volume["NumberOfBlocks"])
-
+        if volume.has_key("OperationalStatus"):
+            volume_stat[0].__setitem__("OperationalStatus", volume["OperationalStatus"])
+        if volume.has_key("HealthState") and volume["HealthState"] is not None:
+            volume_stat[0].__setitem__("HealthState", volume["HealthState"])
+        if volume.has_key("BlockSize"):
+            volume_stat[0].__setitem__("BlockSize", volume["BlockSize"])
+        if volume.has_key("ConsumableBlocks"):
+            volume_stat[0].__setitem__("ConsumableBlocks", volume["ConsumableBlocks"])
+        if volume.has_key("NumberOfBlocks"):
+            volume_stat[0].__setitem__("NumberOfBlocks", volume["NumberOfBlocks"])
     return volume_stat
 
 
@@ -1041,6 +1073,7 @@ def getStorageStatisticsData(conn, path):
     stat = []
     stat = _conn.Associators(path, AssocClass="CIM_ElementStatisticalData",
                               ResultClass="CIM_BlockStorageStatisticalData")
+    # CIM_BlockStorageStatisticalData
     return stat
 
 
@@ -1068,9 +1101,14 @@ def getAssociatedStatistics(conn, path, statAssociations, statDataMap):
 def getStatObjectMap(conn, NAMESPACE):
     _conn = smisconn(conn)
     stat_object_map = {}
-
-    statObjects = _conn.EnumerateInstances("CIM_BlockStorageStatisticalData",
+    # CIM_BlockStorageStatisticalData
+    statObjects = _conn.EnumerateInstances("CIM_StatisticalData",
                                         namespace=NAMESPACE, DeepInheritance=True)
+
+    logger.info("statObjects total: {0}", len(statObjects))
+    # if statObjects is not None and len(statObjects) > 0:
+    #     for statObj in statObjects:
+    #         logger.debug("statObject : {0}", statObj.tomof())
 
     for d in statObjects:
         if d.has_key("InstanceID"):

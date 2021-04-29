@@ -559,7 +559,7 @@ def processVolumeStats(array, volumeStats, lastStats, _tracker, clockTickInterva
                 _tracker.request_inventory()
                 continue
 
-            if _product is not null and _product.startswith('PURESTORAGE'):
+            if _product is not None and _product.startswith('PURESTORAGE'):
                 state = str(convertCIMHealthState(vStat.get("HealthState")))
             else:
                 state = str(convertCIMOperationalStatus(vStat.get("OperationalStatus")))
@@ -1007,6 +1007,15 @@ def __str2datetime(str):
     else:
         return None
 
+def __getDatetime(statTime):
+    if isinstance(statTime, basestring):
+        d1 = __str2datetime(statTime)
+    elif statTime.is_interval:
+        d1 = statTime.timedelta
+    else:
+        d1 = statTime.datetime
+    return d1
+
 def __getDuration(stat, lastStat):
     durationInt = asp.performance_frequency.seconds
     if stat is not None and lastStat is not None:
@@ -1016,16 +1025,8 @@ def __getDuration(stat, lastStat):
         if st1 is None or st0 is None:
             return durationInt
 
-        if isinstance(st1, basestring):
-            d1 = __str2datetime(st1)
-            d0 = __str2datetime(st0)
-        elif st1.is_interval:
-            d1 = st1.timedelta
-            d0 = st0.timedelta
-        else:
-            d1 = st1.datetime
-            d0 = st0.datetime
-
+        d1 = __getDatetime(st1)
+        d0 = __getDatetime(st0)
 
         if None != d1 and None != d0:
             durationInt = (d1 - d0).seconds

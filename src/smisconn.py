@@ -36,8 +36,10 @@ class smisconn():
                 comps = self.conn.Associators(ObjectName, **params)
                 break
             except Exception, e:
-                logger.warn("Failed to Associators {0}",e.message)
-                time.sleep(5)
+                if i == 2:
+                    logger.warn("Failed to Associators {0}", e.message)
+                else:
+                    time.sleep(5)
         return comps
 
     def AssociatorNames(self, ObjectName, **params):

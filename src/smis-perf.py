@@ -8,7 +8,11 @@ from timeit import default_timer as timer
 import requests.packages.urllib3
 import urllib3
 from pywbemReq.cim_operations import WBEMConnection,CIMError
+from pywbemReq.cim_types import *
+from pywbemReq.cim_obj import *
 import pickle
+from io import StringIO
+import csv
 
 import foglight.asp
 import foglight.logging
@@ -31,6 +35,37 @@ DEBUG = True
 asp = SanASP()
 tracker = foglight.model.CollectionTracker(asp.inventory_frequency.seconds / 60)
 
+def getStatisticDict(conn, statServicePath, elementType, csvSeq):
+    statDicts = NocaseDict()
+    statColl = conn.InvokeMethod("GetStatisticsCollection", statServicePath, StatisticsFormat=Uint16(2),
+                                 ElementTypes=[Uint16(elementType)])
+    stats = statColl[1]['Statistics']
+    logger.info("statistics CSV: {0}", stats)
+
+    instanceIDIndex = csvSeq.index("InstanceID")
+    for stat in stats:
+        reader = csv.reader(stat.split('\n'), delimiter=';')
+        for row in reader:
+            if row is None or len(row) < 1:
+                break
+            statObj = NocaseDict()
+            instID = row[instanceIDIndex]
+            pp = instID.rfind('+')
+            if pp >= 0:
+                instID = instID[pp + 1:]
+            statDicts[instID] = statObj
+
+            for propIndex, propName in enumerate(csvSeq):
+                if propIndex >= len(row):
+                    break
+                propRawVal = row[propIndex]
+                if propRawVal.isnumeric():
+                    statObj[propName] = long(propRawVal)
+                else:
+                    statObj[propName] = propRawVal
+    logger.debug(str(statDicts.keys()))
+    return statDicts
+
 def collect_performance(conn):
     logger.info("Starting performance collection")
     _start = datetime.datetime.now()
@@ -52,6 +87,38 @@ def collect_performance(conn):
 
         if not hasStatisticalDataClass(conn, __namespace, __CLASS_NAMES):
             continue
+
+        diskStatDicts = NocaseDict()
+        volumeStatDicts = NocaseDict()
+        statServices = conn.Associators(ps_array.path,
+                                        AssocClass="CIM_HostedService",
+                                        ResultClass="CIM_BlockStatisticsService")
+        if statServices is not None and len(statServices) > 0:
+            enabledState = statServices[0]["EnabledState"]
+            if enabledState != 2:
+                logger.warn("Statistics Service for array {0} has unexpected EnabledState: {1}", ps_array.get("ElementName"), enabledState)
+            if enabledState == 3:
+                continue
+
+            try:
+                man_coll = conn.AssociatorNames(ps_array.path, ResultClass="CIM_BlockStatisticsManifestCollection")[0]
+                manifests = conn.Associators(man_coll, ResultClass="CIM_BlockStatisticsManifest")
+
+                logger.debug("statistics manifests: {0}", manifests)
+                _diskManifest = [m for m in manifests if m["ElementType"] == 10][0]
+                _volumeManifest = [m for m in manifests if m["ElementType"] == 8][0]
+                diskCSVSeq = None if not _diskManifest.has_key("CSVSequence") else _diskManifest["CSVSequence"]
+                volumeCSVSeq = None if not _volumeManifest.has_key("CSVSequence") else _volumeManifest["CSVSequence"]
+                logger.info("diskCSVSeq: {0}", diskCSVSeq)
+                logger.info("volumeCSVSeq: {0}", volumeCSVSeq)
+
+                if diskCSVSeq is not None:
+                    diskStatDicts = getStatisticDict(conn, statServices[0].path, 10, diskCSVSeq)
+                if volumeCSVSeq is not None:
+                    volumeStatDicts = getStatisticDict(conn, statServices[0].path, 8, volumeCSVSeq)
+            except Exception:
+                logger.error(traceback.format_exc())
+
 
         statObjectMap = getStatObjectMap(conn, __namespace)
         statAssociations = getStatAssociations(conn, __namespace)
@@ -94,8 +161,8 @@ def collect_performance(conn):
         logger.info("fcPortStats: {0}", len(fcPortStats))
         iscsiPortStats = getAllPortStatistics(conn, iscsiPorts, statAssociations, statObjectMap)
         logger.info("iscsiPortStats: {0}", len(iscsiPortStats))
-        volumeStats = getAllVolumeStatistics(conn, volumes, statAssociations, statObjectMap)
-        diskStats = getAllDiskStatistics(conn, disks, statAssociations, statObjectMap, __CLASS_NAMES)
+        volumeStats = getAllVolumeStatistics(conn, volumes, statAssociations, statObjectMap, volumeStatDicts)
+        diskStats = getAllDiskStatistics(conn, disks, statAssociations, statObjectMap, __CLASS_NAMES, diskStatDicts)
 
         if len(controllerStats) > 0:
             logger.debug("controllerStatistics: {0}", controllerStats[0].tomof())
@@ -104,13 +171,20 @@ def collect_performance(conn):
         if len(iscsiPortStats) > 0:
             logger.debug("iscsiPortStatistics: {0}", iscsiPortStats[0].tomof())
         if len(volumeStats) > 0:
-            for vs in volumeStats:
-                if vs.has_key('KBytesWritten') and vs['KBytesWritten'] > 0:
-                    logger.debug("volumeStat: {0}", vs.tomof())
-                    break
+            if isinstance(volumeStats[0], CIMInstance):
+                logger.debug("volumeStat: {0}", volumeStats[0].tomof())
+            else:
+                logger.debug("volumeStat: {0}", str(volumeStats[0].values()))
+            # for vs in volumeStats:
+            #     if vs.has_key('KBytesWritten') and vs['KBytesWritten'] > 0:
+            #         logger.debug("volumeStat: {0}", vs.tomof())
+            #         break
 
         if len(diskStats) > 0:
-            logger.debug("diskStatistics: {0}", diskStats[0].tomof())
+            if isinstance(diskStats[0], CIMInstance):
+                logger.debug("diskStatistics: {0}", diskStats[0].tomof())
+            else:
+                logger.debug("diskStatistics: {0}", str(diskStats[0].values()))
 
         statsCap = getStatsCapabilities(conn, ps_array)
         clockTickInterval = None
@@ -166,7 +240,8 @@ def execute_request():
     # handle any exception
     except CIMError as err:
         logger.error(traceback.format_exc())
-    except Exception:
+    except Exception as e:
+        # logger.error(e.message)
         logger.error(traceback.format_exc())
     finally:
         if conn:
